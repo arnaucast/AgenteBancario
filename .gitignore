@@ -1,0 +1,8 @@
+# .gitignore
+.env
+agente_bancario_final/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
