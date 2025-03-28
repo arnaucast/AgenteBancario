@@ -35,11 +35,14 @@ from dotenv import load_dotenv
 import os 
 load_dotenv()
 # Comment these lines out if you don't want Logfire tracing
-logfire.configure(send_to_logfire=os.getenv("CONEXION_LOG_FIRE"))
+logfire.configure(
+    send_to_logfire=True,  # Ensure this is set to True
+    token=os.getenv("CONEXION_LOG_FIRE"),
+                    scrubbing=False)  # Use the token directly
+
 logfire.instrument_openai_agents()
 
 logfire.instrument_openai_agents()
-logfire.configure(scrubbing=False)
 
 # Patch the event loop to allow nested use of asyncio
 nest_asyncio.apply()
