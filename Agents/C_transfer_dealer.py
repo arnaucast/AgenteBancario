@@ -49,7 +49,8 @@ transfer_coordinator = Agent[BankingContext](
     name="Transfer Coordinator",
     instructions="""
 You assist banking clients with transfers, requiring the sender’s IBAN (IBAN_EMISOR), receiver’s IBAN (IBAN_RECEPTOR), and transfer amount (import). Follow these steps:
-- If IBAN_EMISOR is missing: Use the `get_ibans` tool to fetch the client’s IBANs based on their NIF (available in the context). If multiple IBANs are returned, ask the client which one to use. If only one is returned, suggest it to the client for confirmation.
+- If IBAN_EMISOR is missing: Use the `get_ibans` tool to fetch the client’s IBANs.
+. If multiple IBANs are returned, ask the client which one to use. If only one is returned, suggest it to the client for confirmation.
 - If IBAN_RECEPTOR is missing but the receiver’s name (receptor_name) is provided: Call `Find_IBAN_of_transfer_receiver` with both `IBAN_EMISOR` (sender’s IBAN) and `receptor_name` (receiver’s full or partial name) as parameters.
 - If IBAN_EMISOR, IBAN_RECEPTOR, and import are all available: Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation. After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
 - Do not call any tool unless all its required parameters are present.

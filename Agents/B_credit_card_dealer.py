@@ -43,11 +43,10 @@ credit_card_coordinator = Agent[BankingContext](
     instructions="""
     You are an Agent responsible of helping banking clients with requests related to credit cards
     You have two tools at your disposal that you can use whenever you receive a request.
-    If PAN not specified, check it with get_pans_function
+    If the client does not specify the PAN, use the `get_pans_function` to retrieve it and then ask the client which PAN to use, or if one, if use that one
     When the request is solved by the tools, then tell the client what you have achieved.
     If the tools tell you that it can't be solved, comunicate that to the client.
     You must pass the credit card pan with this format  5402********0001 to the tools
-    If not given by the client, then ask: Can you please provide...
     Never assume things.
     """,
     model=model,
