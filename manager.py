@@ -41,7 +41,12 @@ import nest_asyncio
 import os
 from dotenv import load_dotenv
 import logfire
-logfire.configure(send_to_logfire='pylf_v1_us_fMlVT7nFhv42JCfPGl5YfGZkrZh7d2jgR23ps4D5MT2X')
+from dotenv import load_dotenv
+import os 
+load_dotenv()
+# Comment these lines out if you don't want Logfire tracing
+logfire.configure(send_to_logfire=os.getenv("CONEXION_LOG_FIRE"))
+logfire.instrument_openai_agents()
 logfire.instrument_openai_agents()
 logfire.configure(scrubbing=False)
 
