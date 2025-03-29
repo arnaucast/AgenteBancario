@@ -1,109 +1,82 @@
-def preprocess_code(code: str) -> str:
+from pydantic import BaseModel
+from agents import Agent
+from agents import (
+    Agent,
+    GuardrailFunctionOutput,
+    InputGuardrailTripwireTriggered,
+    RunContextWrapper,
+    Runner,
+    TResponseInputItem,
+    input_guardrail,
+)
+from agents import Runner
+import os
+from dotenv import load_dotenv
+import datetime
+
+load_dotenv()
+
+model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
+
+# Define the banking guardrail agent
+BANKING_GUARDRAIL_PROMPT = (
+    """You are an agent that filters client input to keep only banking-related requests that a banking agent can handle.
+    
+    Examples of banking-related requests include:
+    - Checking transactions
+    - Sending money
+    - Account balance inquiries
+    - Payment scheduling
+    - Asking for news specifically about Banc Sabadell
+    - Data Analysis of bank movements 
+    
+    IMPORTANT: Asking for news about Banc Sabadell is a valid request and should be kept.
     """
-    Preprocess code to handle multiline dictionary, list, and complex declarations.
+)
 
-    Args:
-        code (str): Original code string
+class BankingFilterOutput(BaseModel):
+    filtered_text: str
+    """The input text with non-banking-related content removed"""
+    non_banking_content_removed: bool
+    """Indicates if any non-banking content was removed"""
 
-    Returns:
-        str: Processed code string
-    """
-    # Remove commented lines
-    lines = [line for line in code.split('\n') if not line.strip().startswith('#')]
+banking_guardrail_agent = Agent(
+    name="BankingFilterGuardrail",
+    instructions=BANKING_GUARDRAIL_PROMPT,
+    model="o3-mini",
+    output_type=BankingFilterOutput,
+)
 
-    # Handle multiline declarations
-    processed_lines = []
-    current_statement = []
-    in_multiline = False
-    paren_count = 0
-    brace_count = 0
-    bracket_count = 0
-
-    for line in lines:
-        stripped_line = line.strip()
-
-        # Count opening and closing delimiters
-        paren_count += stripped_line.count('(') - stripped_line.count(')')
-        brace_count += stripped_line.count('{') - stripped_line.count('}')
-        bracket_count += stripped_line.count('[') - stripped_line.count(']')
-
-        # Check if we're in a multiline statement
-        if (('(' in stripped_line and paren_count > 0) or 
-            ('{' in stripped_line and brace_count > 0) or
-            ('[' in stripped_line and bracket_count > 0)):
-            if not in_multiline:
-                in_multiline = True
-            current_statement.append(stripped_line)
-            continue
-
-        # Continuing a multiline statement
-        if in_multiline:
-            current_statement.append(stripped_line)
-
-            # Check if multiline statement is complete
-            if paren_count == 0 and brace_count == 0 and bracket_count == 0:
-                # Join without newlines and minimal whitespace
-                combined = ' '.join(current_statement)
-                # Remove any remaining newlines and extra spaces
-                combined = ''.join(combined.splitlines())
-                combined = ' '.join(combined.split())
-                processed_lines.append(combined)
-                current_statement = []
-                in_multiline = False
-            continue
-
-        # Regular line
-        if not in_multiline:
-            processed_lines.append(line)
-
-    # If statement was not closed, combine it
-    if current_statement:
-        combined = ' '.join(current_statement)
-        combined = ''.join(combined.splitlines())
-        combined = ' '.join(combined.split())
-        processed_lines.append(combined)
-
-    return '\n'.join(processed_lines)
-
-# Test code with complex multiline structures
-code = """
-# Configuration settings
-config = {
-    'database': {
-        'host': 'localhost',
-        'port': 5432,
-        'credentials': {
-            'username': 'admin',
-            'password': 'secret'
-        }
-    },
-    'api': {
-        'endpoints': [
-            'users',
-            'products',
-            'orders'
-        ],
-        'version': 2.0
-    }
-}
-
-# Complex list comprehension with nested conditions
-results = [
-    x * y 
-    for x in range(10) 
-    for y in range(5) 
-    if x > 3 
-    if y < 4
+# List of 20 test examples in Spanish (mix of banking and non-banking)
+test_examples = [
+    "Quiero revisar mis transacciones de este mes",
+    "¿Cómo puedo enviar dinero a mi amigo?",
+    "Dime el clima de hoy y el saldo de mi cuenta",
+    "Necesito programar un pago para el viernes",
+    "¿Qué noticias hay sobre Banc Sabadell?",
+    "Quiero ir de compras este fin de semana",
+    "Analiza los movimientos de mi cuenta",
+    "¿Cómo bloqueo mi tarjeta si la pierdo?",
+    "¿Qué películas están en el cine?",
+    "Dime cómo abrir una cuenta nueva",
+    "Quiero saber el tipo de cambio del dólar",
+    "Enséñame a cocinar paella",
+    "Verifica si recibí un depósito ayer",
+    "¿Puedo pedir un préstamo personal?",
+    "Busca vuelos baratos a Madrid",
+    "¿Cuál es el horario de las sucursales?",
+    "Dame un resumen de mis gastos este año",
+    "¿Qué pasó en el partido de fútbol ayer?",
+    "Quiero noticias recientes de Banc Sabadell",
+    "Explícame cómo funciona la bolsa de valores"
 ]
 
-# Nested function calls with dictionary
-processed = sorted(
-    {
-        k: v * 2 
-        for k, v in config['database'].items()
-    }.items(),
-    key=lambda x: x[1]
-)
-"""
-
-print(preprocess_code(code))
+# Process each example and print original text and result
+for example in test_examples:
+    prueba = Runner.run_sync(banking_guardrail_agent, example)
+    guardrail_output = prueba.final_output_as(banking_guardrail_agent)
+    
+    print(f"Original text: {example}")
+    print(f"Filtered text: {guardrail_output.filtered_text}")
+    print(f"Non-banking content removed: {guardrail_output.non_banking_content_removed}")
+    print("-" * 50)

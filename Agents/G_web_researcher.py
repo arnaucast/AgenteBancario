@@ -103,8 +103,8 @@ async def run_news_research(topic: str) -> str:
     final_summary = await _summarize_results(search_results)
     
     return final_summary
-
-async def _plan_searches(topic: str) -> SearchPlan:
+'''
+async def _plan_searches2(topic: str) -> SearchPlan:
     result = await Runner.run(planner_agent, f"Topic: {topic}")
     return result.final_output_as(SearchPlan)
 
@@ -116,9 +116,40 @@ async def _perform_searches(search_plan: SearchPlan) -> Sequence[str]:
             results.append(result)
     return results
 
+
 async def _search(item: SearchItem) -> str:
     result = await Runner.run(search_agent, item.query)
     return str(result.final_output)
+'''
+
+async def _plan_searches(topic: str) -> SearchPlan:
+    result = await Runner.run(planner_agent, f"Topic: {topic}")
+    return result.final_output_as(SearchPlan)
+
+async def _perform_searches(search_plan) -> Sequence[str]:
+    tasks = [asyncio.create_task(_search(item)) for item in search_plan.searches] #iy creates a list with all the searches strings to use
+    #each element is a dictionary with reason and search item
+    results: list[str] = []
+    num_completed = 0
+    for task in asyncio.as_completed(tasks): # iterates over the tasks as they complete. Each task in the loop 
+                                            #is a Task object that has finished its execution (either successfully or with an exception).
+        '''
+        Even though asyncio.as_completed gives you completed tasks, you still need to await each one to retrieve its result (or exception). 
+        This is because a Task is a wrapper around a coroutine, and await extracts the final value.
+        '''
+        result = await task
+        if result is not None:
+            results.append(result)
+        num_completed += 1
+    return results #append of results
+
+async def _search(search_plan) -> str | None:
+    try:
+        result = await Runner.run(search_agent, search_plan.query) #we send  it the text
+        return str(result.final_output)
+    except Exception:
+        return None 
+
 
 async def _summarize_results(search_results: Sequence[str]) -> str:
     if not search_results:
