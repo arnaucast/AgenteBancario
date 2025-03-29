@@ -49,26 +49,7 @@ banking_guardrail_agent = Agent(
 
 # List of 20 test examples in Spanish (mix of banking and non-banking)
 test_examples = [
-    "Quiero revisar mis transacciones de este mes",
-    "¿Cómo puedo enviar dinero a mi amigo?",
-    "Dime el clima de hoy y el saldo de mi cuenta",
-    "Necesito programar un pago para el viernes",
-    "¿Qué noticias hay sobre Banc Sabadell?",
-    "Quiero ir de compras este fin de semana",
-    "Analiza los movimientos de mi cuenta",
-    "¿Cómo bloqueo mi tarjeta si la pierdo?",
-    "¿Qué películas están en el cine?",
-    "Dime cómo abrir una cuenta nueva",
-    "Quiero saber el tipo de cambio del dólar",
-    "Enséñame a cocinar paella",
-    "Verifica si recibí un depósito ayer",
-    "¿Puedo pedir un préstamo personal?",
-    "Busca vuelos baratos a Madrid",
-    "¿Cuál es el horario de las sucursales?",
-    "Dame un resumen de mis gastos este año",
-    "¿Qué pasó en el partido de fútbol ayer?",
-    "Quiero noticias recientes de Banc Sabadell",
-    "Explícame cómo funciona la bolsa de valores"
+    "Quiero revisar mis transacciones de este mes"
 ]
 
 # Process each example and print original text and result

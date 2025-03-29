@@ -70,7 +70,7 @@ search_agent = Agent(
 
 # Summary Agent: Combines search results into a final news summary
 SUMMARY_INSTRUCTIONS = (
-    "You are a news summarizer. Given a list of news summaries, combine them into a single concise summary of 300-400 words. "
+    "You are a news summarizer. Given a list of news summaries, combine them into a single concise summary of 50 words. "
     "Focus on the most significant events and developments, avoiding financial analysis or speculation. Include key dates and details."
 )
 
