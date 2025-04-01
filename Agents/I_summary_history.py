@@ -18,7 +18,7 @@ model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
 # New Context Summarizer Agent
 CONTEXT_SUMMARIZER_PROMPT = (
     """You are an agent that summarizes the conversation history to extract key banking-related details (what he ordered, account numbers, import, user preferences) 
-    for use in subsequent tasks. Provide a concise summary of relevant information, ignoring non-banking content."""
+    for use in subsequent tasks. Provide a concise summary of 30 words of relevant information, ignoring non-banking content."""
 )
 
 class ContextSummary(BaseModel):
@@ -28,6 +28,6 @@ class ContextSummary(BaseModel):
 context_summarizer_agent = Agent(
     name="ContextSummarizer",
     instructions=CONTEXT_SUMMARIZER_PROMPT,
-    model="o3-mini",
+    model=model,
     output_type=ContextSummary
 )

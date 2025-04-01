@@ -9,20 +9,17 @@ from agents import (
     TResponseInputItem,
     input_guardrail,
 )
-
+import os
+model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
 # Define the banking guardrail agent
 BANKING_GUARDRAIL_PROMPT = (
     """You are an agent that filters client input to keep only banking-related requests that a banking agent can handle.
     
     Examples of banking-related requests include:
-    - Checking transactions
-    - Sending money
-    - Account balance inquiries
-    - Payment scheduling
-    - Asking for news specifically about Banc Sabadell
-    - Data Analysis of bank movements 
-    
-    IMPORTANT: Asking for news about Banc Sabadell is a valid request and should be kept.
+    - Things related to transfers
+    - Things related to credit or debit cards
+    - Things related to News related to Banc Sabadell. Any other topic not.
+    - Analytics on the client's bank movements, client spending, client earnings
     """
 )
 
@@ -35,7 +32,7 @@ class BankingFilterOutput(BaseModel):
 banking_guardrail_agent = Agent(
     name="BankingFilterGuardrail",
     instructions=BANKING_GUARDRAIL_PROMPT,
-    model="o3-mini",
+    model=model,
     output_type=BankingFilterOutput,
 )
 # Fixed Task Separator Agent to ONLY separate tasks without filtering
@@ -69,6 +66,6 @@ class TaskSeparatorLists(BaseModel):
 task_separator_agent = Agent(
     name="TaskSeparator",
     instructions=TASK_SEPARATOR_PROMPT,
-    model="o3-mini",
+    model=model,
     output_type=TaskSeparatorLists
 )

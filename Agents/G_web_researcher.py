@@ -51,7 +51,7 @@ class SearchPlan(BaseModel):
 planner_agent = Agent(
     name="NewsPlannerAgent",
     instructions=PLANNER_PROMPT,
-    model="o3-mini",
+    model=model,
     output_type=SearchPlan,
 )
 
@@ -77,7 +77,7 @@ SUMMARY_INSTRUCTIONS = (
 summary_agent = Agent(
     name="NewsSummaryAgent",
     instructions=SUMMARY_INSTRUCTIONS,
-    model="o3-mini",
+    model=model,
 )
 
 """Functions for orchestrating planning, searching, and summarizing news about a topic."""
@@ -156,7 +156,7 @@ async def _summarize_results(search_results: Sequence[str]) -> str:
         return "No news summaries available."
     input_text = "Summaries:\n" + "\n\n".join(search_results)
     result = await Runner.run(summary_agent, input_text)
-    return str(result.final_output)
+    return str(result.final_output), True
 
 news_coordinator = Agent(
     name="News Coordinator",
@@ -164,7 +164,7 @@ news_coordinator = Agent(
     instructions="""
 Given some news to search, use run_news_research and return the result to the user
     """,
-    model="o3-mini",  # Adjust model as needed
+    model=model,  # Adjust model as needed
     tools=[run_news_research]
 )
 

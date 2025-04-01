@@ -10,10 +10,14 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os 
 load_dotenv()
+'''
 conn = psycopg2.connect(
     dsn=os.getenv("CONEXION_BBDD")
 )
 cursor = conn.cursor()
+'''
+from __init__ import conn,cursor 
+
 from agents import (
     Agent,
     GuardrailFunctionOutput,
@@ -66,6 +70,19 @@ def get_ibans(wrapper: RunContextWrapper['BankingContext']) -> List[str]:
         return [row[0] for row in results]
     return []
 
+def get_ibans_for_nif(nif) -> List[str]:
+    """If a client doesn't specify the IBAN from which to send a transfer, call this tool to get it"""
+    # Use NIF from context if available, otherwise fallback to imported cif_cliente
+    if nif == "":
+        return []
+    
+    query = 'SELECT DISTINCT "IBAN" FROM "iban_titulares" WHERE "CIF" = %s'
+    cursor.execute(query, (nif,))
+    results = cursor.fetchall()
+    if results:
+        return [row[0] for row in results]
+    return []
+
 def get_ibans_for_web(nif) -> List[str]:
     """If a client doesn't specify the IBAN from which to send a transfer, call this tool to get it"""
     # Use NIF from context if available, otherwise fallback to imported cif_cliente
@@ -76,8 +93,17 @@ def get_ibans_for_web(nif) -> List[str]:
         return [row[0] for row in results]
     return []
 
+def get_name_for_web(nif) -> List[str]:
+    """If a client doesn't specify the IBAN from which to send a transfer, call this tool to get it"""
+    # Use NIF from context if available, otherwise fallback to imported cif_cliente
+    query = 'SELECT distinct "Nombre", "Apellidos" FROM "iban_titulares" WHERE "CIF" = %s'
+    cursor.execute(query, (nif, ))
+    results = cursor.fetchall()
+    if results:
+        return [(row[0] + " " +  row[1]) for row in results]
+    return []
 
-@function_tool
+
 def validate_iban(iban: str) -> bool:
     """
     Validates an IBAN using the standard MOD-97 algorithm and country-specific format rules.
@@ -167,10 +193,7 @@ class CheckIfIBANCorrect(BaseModel):
     IBAN_correct_format: bool = Field(
         description="Whether the IBAN passes validation through the validate_iban function"
     )
-    IBAN_emisor_given: bool = Field(
-        description="Whether in the text the IBAN of the sender appears or not"
-    )
-    detected_iban: Optional[str] = Field(
+    detected_iban_emisor: Optional[str] = Field(
         default=None, 
         description="The detected IBAN if found, or None"
     )
@@ -182,34 +205,43 @@ class CheckIfIBANCorrect(BaseModel):
 guardrail_agent = Agent(
     name="Check_IBAN_correct",
     instructions="""
-    Analyze user input to detect IBAN information and determine:
+    Analyze user input to detect IBAN emsisor information and determine:
 
-    1. Does the input contain an IBAN?
-    2. Is the IBAN valid? (Use the validate_iban function.)
-    3. Does the IBAN belong to the sender? (Look for phrases like "my IBAN", "from my account", or "transfer from".)
+    1. Does the input contain an IBAN emsior?
+    2. Is the IBAN emisor valid? (Use the validate_iban function.)
+    3. Does the IBAN emisor belong to the sender? (Look for phrases like "my IBAN", "from my account", or "transfer from".)
 
     Rules:
     - If no IBAN is found:
-    - Return: IBAN_correct_format = false, IBAN_emisor_given = false, detected_iban = null, country = null.
-    - If an IBAN is found:
-    - Set detected_iban to the IBAN.
+    - Return: IBAN_correct_format = false, detected_iban_emisor = null, country = null.
+    - If an IBAN  emisor is found:
+    - Set detected_iban_emisor to the IBAN of the emisor
     - Set country to the IBAN’s country (from validate_iban).
     - Set IBAN_correct_format to true if validate_iban says it’s valid, false if not.
-    - Set IBAN_emisor_given to true if it’s the sender’s IBAN AND invalid, otherwise false.
-
-    Return all fields: IBAN_correct_format, IBAN_emisor_given, detected_iban, country.
     """,
     tools=[validate_iban],
     output_type=CheckIfIBANCorrect,
 )
 
+def CheckIfIBANBelongs(IBAN,nif):
+    try:
+        query = 'SELECT "IBAN" FROM "iban_titulares" WHERE "CIF" = %s  AND "IBAN" = %s'
+        cursor.execute(query, (nif, IBAN))
+        result = cursor.fetchone()
+        
+        if not result:
+            return False
+        else: 
+            return True
+    except:
+        return False
 @input_guardrail
 async def iban_emisor_guardrail(
     ctx: RunContextWrapper['BankingContext'], agent: Agent, input: str | list[TResponseInputItem]
 ) -> GuardrailFunctionOutput:
     """Guardrail to check if an IBAN is provided, valid, and belongs to the client."""
     print("Processing input for IBAN validation")
-    
+
     # Handle different input types
     if isinstance(input, str):
         input_str = input
@@ -228,7 +260,7 @@ async def iban_emisor_guardrail(
     result = await Runner.run(guardrail_agent, input_str, context=ctx.context)
     iban_check_result = result.final_output_as(CheckIfIBANCorrect)
     
-    if not iban_check_result.IBAN_emisor_given:
+    if  iban_check_result.detected_iban_emisor ==None:
         print("HOLA1")
         return GuardrailFunctionOutput(
             output_info={
@@ -237,7 +269,7 @@ async def iban_emisor_guardrail(
             tripwire_triggered=False
         )
     # If no IBAN was detected or the IBAN is invalid
-    if  iban_check_result.IBAN_emisor_given and not iban_check_result.IBAN_correct_format:
+    if   iban_check_result.detected_iban_emisor != None and not iban_check_result.IBAN_correct_format:
         print("HOLA2")
         return GuardrailFunctionOutput(
             output_info={
@@ -248,7 +280,7 @@ async def iban_emisor_guardrail(
         )
     
     # Extract the detected IBAN (already validated by the guardrail agent)
-    iban_emisor = iban_check_result.detected_iban.replace(" ", "")  # Remove spaces
+    iban_emisor = iban_check_result.detected_iban_emisor.replace(" ", "")  # Remove spaces
     
     # Check if the IBAN belongs to the client using database lookup
     try:
@@ -264,6 +296,7 @@ async def iban_emisor_guardrail(
                 },
                 tripwire_triggered=True
             )
+        
     except Exception as e:
         print("HOLA4")
         # Handle database errors
@@ -375,6 +408,14 @@ def get_pans_function(wrapper: RunContextWrapper['BankingContext']) -> List[str]
     return []
 
 
+def get_pans(nif) -> List[str]:
+    """Returns all credit card PANs of a client"""
+    query = 'SELECT DISTINCT "PAN" FROM "pan_limite_tarjeta" WHERE "CIF" = %s'
+    cursor.execute(query, (nif,))
+    results = cursor.fetchall()
+    if results:
+        return [row[0] for row in results]
+    return []
 
 @function_tool
 def get_card_details_function(wrapper: RunContextWrapper['BankingContext'], pan:str)->str:
@@ -427,7 +468,7 @@ def block_card_function(wrapper: RunContextWrapper['BankingContext'], pan:str)->
         # Step 1: Check if the card exists for the given CIF and PAN
         card_details = get_card_details(wrapper.context.nif, pan)
         if not card_details:
-            return block_card(success_status=False,message= f"No record found in pan_limite_tarjeta for CIF {wrapper.context.nif} and PAN {pan}.")
+            return block_card(success_status=False,message= f"No records found for {wrapper.context.nif} and PAN {pan}.")
         # Step 2: Check the current status of tarjeta_bloqueada
         if card_details["tarjeta_bloqueada"] == 'SI':
             return block_card(success_status=True,message= f"Card with PAN {pan} is already blocked.")
@@ -532,77 +573,94 @@ class make_transfer_class(BaseModel):
     message: str
 
 @function_tool
-def transfer_money_and_log(iban_emisor:str, iban_receptor:str, amount:float)->make_transfer_class:
+def transfer_money_and_log(wrapper: RunContextWrapper['BankingContext'],iban_emisor:str, iban_receptor:str, amount:float)->make_transfer_class:
     """
     Transfers money from iban_emisor to iban_receptor, updates Saldos, and logs the relationship in relaciones_bizums.
     """
-    try:
-        # Step 1: Get the current Saldo for both IBANs
-        saldo_emisor = get_saldos_by_IBAN(iban_emisor)
-        saldo_receptor = get_saldos_by_IBAN(iban_receptor)
 
-        if saldo_emisor is None:
-            return make_transfer_class(success_status=False,message= f"IBAN {iban_emisor} not found in Saldos.")
-        if saldo_receptor is None:
-            return make_transfer_class(success_status=False,message= f"IBAN {iban_receptor} not found in Saldos.")
-        
-        # Step 2: Verify sufficient balance in iban_emisor
-        if saldo_emisor < amount:
-            return make_transfer_class(success_status=False,message= f"Insufficient balance in IBAN {iban_emisor}. Current Saldo: {saldo_emisor}, Required: {amount}")
+    validate_iban_emisor = validate_iban(iban_emisor)
+    validate_iban_receptor = validate_iban(iban_receptor)
 
-        # Step 3: Calculate new Saldos
-        new_saldo_emisor = saldo_emisor - amount
-        new_saldo_receptor = saldo_receptor + amount
+    query = 'SELECT "IBAN" FROM "iban_titulares" WHERE "CIF" = %s AND  "IBAN" = %s'
+    cursor.execute(query, (wrapper.context.nif, iban_emisor))
+    result = cursor.fetchone()
 
-        # Step 4: Update both IBANs in Saldos
-        query = 'UPDATE "saldos" SET "Saldo" = %s WHERE "IBAN" = %s'
-        cursor.execute(query, (new_saldo_emisor, iban_emisor))
-        cursor.execute(query, (new_saldo_receptor, iban_receptor))
+    if validate_iban_emisor and validate_iban_receptor:
+        if result:
+            try:
+                # Step 1: Get the current Saldo for both IBANs
+                saldo_emisor = get_saldos_by_IBAN(iban_emisor)
+                saldo_receptor = get_saldos_by_IBAN(iban_receptor)
 
-        # Step 5: Fetch Titular de Gestión details for both IBANs
-        nombre_emisor, apellidos_emisor = get_titular_de_gestion(iban_emisor)
-        nombre_receptor, apellidos_receptor = get_titular_de_gestion(iban_receptor)
+                if saldo_emisor is None:
+                    return make_transfer_class(success_status=False,message= f"IBAN {iban_emisor} not found in Saldos. Tell the client")
+                if saldo_receptor is None:
+                    return make_transfer_class(success_status=False,message= f"IBAN {iban_receptor} not found in Saldos. Tell the client")
+                
+                # Step 2: Verify sufficient balance in iban_emisor
+                if saldo_emisor < amount:
+                    return make_transfer_class(success_status=False,message= f"Insufficient balance in IBAN {iban_emisor}. Current Saldo: {saldo_emisor}, Required: {amount}. Tell the client")
 
-        if nombre_emisor is None:
-            return make_transfer_class(success_status=False,message= f"No Titular de Gestión found for IBAN {iban_emisor}.")
-        if nombre_receptor is None:
-            return make_transfer_class(success_status=False,message= f"No Titular de Gestión found for IBAN {iban_receptor}.")
-        
-        # Step 6: Fetch phone numbers for both IBANs
-        telefono_emisor = get_phone_by_iban(iban_emisor)
-        telefono_receptor = get_phone_by_iban(iban_receptor)
+                # Step 3: Calculate new Saldos
+                new_saldo_emisor = saldo_emisor - amount
+                new_saldo_receptor = saldo_receptor + amount
 
-        if telefono_emisor is None:
-            return make_transfer_class(success_status=False,message= f"No phone number found for IBAN {iban_emisor}.")
-        if telefono_receptor is None:
-            return make_transfer_class(success_status=False,message= f"No phone number found for IBAN {iban_receptor}.")
+                # Step 4: Update both IBANs in Saldos
+                query = 'UPDATE "saldos" SET "Saldo" = %s WHERE "IBAN" = %s'
+                cursor.execute(query, (new_saldo_emisor, iban_emisor))
+                cursor.execute(query, (new_saldo_receptor, iban_receptor))
 
-        # Step 7: Check if the relationship already exists in relaciones_bizums
-        if relationship_exists(iban_emisor, iban_receptor):
-            # If the relationship exists, commit the Saldo updates and return
-            conn.commit()
-            return make_transfer_class(success_status=True,message= f"Transfer of {amount} from IBAN {iban_emisor} to IBAN {iban_receptor} successful. Relationship already logged.")
+                # Step 5: Fetch Titular de Gestión details for both IBANs
+                nombre_emisor, apellidos_emisor = get_titular_de_gestion(iban_emisor)
+                nombre_receptor, apellidos_receptor = get_titular_de_gestion(iban_receptor)
 
-        # Step 8: Insert the new relationship into relaciones_bizums
-        query = '''
-            INSERT INTO "relaciones_bizums" (
-                "IBAN_EMISOR", "IBAN_RECEPTOR", "TELEFONO_EMISOR", "TELEFONO_RECEPTOR",
-                "NOMBRE_EMISOR", "APELLIDO_EMISOR", "NOMBRE_RECEPTOR", "APELLIDO_RECEPTOR"
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        '''
-        cursor.execute(query, (
-            iban_emisor, iban_receptor, telefono_emisor, telefono_receptor,
-            nombre_emisor, apellidos_emisor, nombre_receptor, apellidos_receptor
-        ))
+                if nombre_emisor is None:
+                    return make_transfer_class(success_status=False,message= f"No Titular de Gestión found for IBAN {iban_emisor}. Tell the client")
+                if nombre_receptor is None:
+                    return make_transfer_class(success_status=False,message= f"No Titular de Gestión found for IBAN {iban_receptor}.Tell the client")
+                
+                # Step 6: Fetch phone numbers for both IBANs
+                telefono_emisor = get_phone_by_iban(iban_emisor)
+                telefono_receptor = get_phone_by_iban(iban_receptor)
 
-        # Step 9: Commit the transaction (Saldos updates + relaciones_bizums insert)
-        conn.commit()
+                if telefono_emisor is None:
+                    return make_transfer_class(success_status=False,message= f"No phone number found for IBAN {iban_emisor}. Tell the client")
+                if telefono_receptor is None:
+                    return make_transfer_class(success_status=False,message= f"No phone number found for IBAN {iban_receptor}. Tell the client")
 
-        return make_transfer_class(success_status=True,message= f"Transfer of {amount} from IBAN {iban_emisor} to IBAN {iban_receptor} successful. Relationship logged.")
-    except Exception as e:
-        # Rollback the transaction on error
-        conn.rollback()
-        return make_transfer_class(success_status=False,message= f"Error during transfer: {str(e)}")
+                # Step 7: Check if the relationship already exists in relaciones_bizums
+                if relationship_exists(iban_emisor, iban_receptor):
+                    # If the relationship exists, commit the Saldo updates and return
+                    conn.commit()
+                    return make_transfer_class(success_status=True,message= f"Transfer of {amount} from IBAN {iban_emisor} to IBAN {iban_receptor} successful. Tell the client")
+
+                # Step 8: Insert the new relationship into relaciones_bizums
+                query = '''
+                    INSERT INTO "relaciones_bizums" (
+                        "IBAN_EMISOR", "IBAN_RECEPTOR", "TELEFONO_EMISOR", "TELEFONO_RECEPTOR",
+                        "NOMBRE_EMISOR", "APELLIDO_EMISOR", "NOMBRE_RECEPTOR", "APELLIDO_RECEPTOR"
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                '''
+                cursor.execute(query, (
+                    iban_emisor, iban_receptor, telefono_emisor, telefono_receptor,
+                    nombre_emisor, apellidos_emisor, nombre_receptor, apellidos_receptor
+                ))
+
+                # Step 9: Commit the transaction (Saldos updates + relaciones_bizums insert)
+                conn.commit()
+
+                return make_transfer_class(success_status=True,message= f"Transfer of {amount} from IBAN {iban_emisor} to IBAN {iban_receptor} successful. Tell the client")
+            except Exception as e:
+                # Rollback the transaction on error
+                conn.rollback()
+                return make_transfer_class(success_status=False,message= f"Error during transfer: {str(e)}")
+        else:
+            return  make_transfer_class(success_status=False,message= f"The IBAN {iban_emisor} doesn't belong to you. Tell the client")
+    elif not validate_iban_emisor:
+        return  make_transfer_class(success_status=False,message= f"The IBAN EMISOR doesn't have the correct format. Tell the client")
+    else:
+        return  make_transfer_class(success_status=False,message= f"The IBAN RECEPTOR doesn't have the correct format. Tell the client")
+    
 
 # Function to normalize a name (remove accents, convert to uppercase)
 def normalize_name(name):
@@ -619,8 +677,10 @@ class closest_match_transfer_class(BaseModel):
 # Function to find the closest match in relaciones_bizums
 def find_closest_match(iban_emisor:str, target_name:str)->closest_match_transfer_class:
     """
-    Finds the closest match for target_name of a transfer taking into  IBAN_emisor transaction history. If nothing returned, then it can't find it.
+    Only if receiver's name is not "", call this tool..
     """
+    if not target_name or not target_name.strip():
+        return "I don't have the name of the receptor. Ask the client for information." # Early return if no name provided
     # Normalize the target name
     target_name_normalized = normalize_name(target_name)
     # Extract significant words (≥ 5 letters) from the target name

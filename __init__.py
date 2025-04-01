@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 import pandas as pd
 
 import psycopg2
-from typing import List
+from typing import List,Dict
 from dotenv import load_dotenv
 import os 
 load_dotenv()
@@ -14,6 +14,7 @@ cursor = conn.cursor()
 @dataclass
 class BankingContext:
     nif: str = None  # The NIF will be set via Streamlit
+    data: Dict = field(default_factory=dict) 
 
 def get_unique_variable_mov(variable) -> List[str]:
     """
@@ -53,6 +54,46 @@ def get_unique_variable_mov(variable) -> List[str]:
     except psycopg2.Error as e:
         print(f"Database error: {e}")
         return []
+
+def get_tipo_cliente_iban(IBAN) -> List[str]:
+    """
+    Retrieve unique tipo_cli de IBAN
+    
+    Parameters:
+    -----------
+    client_type : str
+        The client type to filter by
+    
+    Returns:
+    --------
+    List[str]
+        A list of unique IBAN numbers for the specified client type
+    """
+
+    try:
+        # Create cursor
+        with conn.cursor() as cursor:
+            # Prepare the query to get unique IBANs for the specified client type
+            query = f'''
+            SELECT DISTINCT "client_type"
+            FROM movements
+            where "identificador_contrato" = %s
+            '''
+            
+            # Execute query
+            cursor.execute(query,(IBAN,))
+            
+            # Fetch results
+            results = cursor.fetchall()
+            
+            # Convert to list of IBANs
+            unique_valors = [row[0] for row in results]
+            
+            return unique_valors
+    
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return []   
     
 def get_distinct_cifs_by_ibans(ibans: List[str]) -> List[str]:
     """

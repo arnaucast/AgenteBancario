@@ -16,48 +16,59 @@ model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
 from context import BankingContext
 from .utilities.analytics_subagents import *
 from .utilities.bank_movements_dealers import *
-
+from .utilities.bank_movements_dealers import *
 import asyncio
+from __init__ import BankingContext
 
 @function_tool
-async def DealWithAnalyticsTask(text: str) -> str:
+async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: str,iban_emisor:str) -> str:
+    """Tool that must be given the petition of the user for the data he wants to analyze and the iban_emisor of the user"""
     # Step 1: Plan the searches
     print("Text received")
     print(text)
     print("A1")
-    categories_found = await find_categories(text)
-    
-    # Step 2: Perform the searches sequentially
-    print("A2")
-    print(categories_found.items_found)
-    print("bbb")
-    categories_found = [item.category for item in categories_found.items_found]
-    print(categories_found)
-    if categories_found:
-        categories_real_found = await Given_List_categ_find_names(categories_found,5)
-        print("B")
-        print(categories_real_found)
-        categ_found = str(categories_real_found)
-        categories_found = await find_filtered_categories(f"User question: {text} and the categories names you need to filter {categ_found} ")
-        print("C")
-        print(categories_found)
+    IBAN_CORRECTO = CheckIfIBANBelongs(iban_emisor,ctx.context.nif)
+    if IBAN_CORRECTO:
+        data = get_iban_data([iban_emisor])
+        print(f"Hemos sacado datos de {iban_emisor}")
+        data = data[["fechahora","categoria","id_signo","importe"]].to_dict()
+        categories_found = await find_categories(text)
+        
+
+        # Step 2: Perform the searches sequentially
+        print("A2")
+        print(categories_found.items_found)
+        print("bbb")
         categories_found = [item.category for item in categories_found.items_found]
-        print("D")
         print(categories_found)
-       
-    
-    # Step 3: Summarize the results
-    print("A3")
-    
-    if categories_found:
-        final_result = await execute_code_agent(f"User question: {text}. Filter for the categories that solve the user question. You can choose from these: {categories_found}")
+        if categories_found:
+            categories_real_found = await Given_List_categ_find_names(categories_found,5)
+            print("B")
+            print(categories_real_found)
+            categ_found = str(categories_real_found)
+            categories_found = await find_filtered_categories(f"User question: {text} and the categories names you need to filter {categ_found} ")
+            print("C")
+            print(categories_found)
+            categories_found = [item.category for item in categories_found.items_found]
+            print("D")
+            print(categories_found)
+        
+        
+        # Step 3: Summarize the results
+        print("A3")
+        
+        if categories_found:
+            final_result = await execute_code_agent(data,f"User question: {text}. Filter for the categories that solve the user question. You can choose from these: {categories_found}")
+        else:
+            final_result = await execute_code_agent(data,f"User question: {text}")
+        
+        final_result_v2 = await AnalyzeText(text,final_result)
+        print("Final response")
+        print(final_result_v2)
+        
+        return final_result_v2
     else:
-        final_result = await execute_code_agent(f"User question: {text}")
-    
-    print("Final response")
-    print(final_result)
-    
-    return final_result
+        return "El IBAN proporcionado no es del usuario"
 
 async def find_categories(text: str) -> CategorySeparatorLists:
     result = await Runner.run(category_separator_agent, f"text to analyze: {text}")
@@ -67,34 +78,38 @@ async def find_filtered_categories(text: str) -> CategorySeparatorLists:
     result = await Runner.run(category_filterer, f"Categories to filter : {text}")
     return result.final_output_as(Categories_FilteredList)
 
-async def execute_code_agent(text: str) -> str:
+async def execute_code_agent(data,text: str) -> str:
     print("Final text")
     print(text)
-    result = await Runner.run(bank_query_agent, text)
+    BankingContext.data = data
+    result = await Runner.run(bank_query_agent, text,context=BankingContext)
     print("Text222")
     print(result)
     return result.final_output_as(str)
 
-analyzer_of_data = Agent(
+async def AnalyzeText(output_data: str,user_question) -> str:
+    result = await Runner.run(analyze_user_data, f"The user question is {user_question} and the data you must use is {output_data}")
+    return result.final_output_as(str)
+
+class AnalyzerOutput(BaseModel):
+    message_to_client: str
+    """Analysis to send the client"""
+    operation_success: bool
+    """Allways return it to True, no matter what"""
+
+
+
+analyzer_of_data = Agent[BankingContext](
     name="Analytics",
     handoff_description="Handles analytics",
-    instructions="""1. Use DealWithAnalyticsTask to perform the analysis. Send only the user's exact text to the tool. Try using this tool a maximum of 3 times.
-2. When processing the returned data, follow these guidelines:
-   - If data includes a table, display the table in a markdown or formatted layout
-   - Use clear, concise language for explanations
-   - Highlight key insights
-   - Organize information with headings or bullet points if appropriate
-   - Limit response to 200 words maximum
-3. Formatting priorities:
-   - Clarity
-   - Readability
-   - Use always thre ### for titles
-   - Visual structure
-   - Concise explanations of key findings
-4. Include a brief summary or interpretation of the data
+    instructions="""1. Use DealWithAnalyticsTask to perform the analysis. 
+    Send only the user's exact text to the tool and the IBAN emisor. Try using this tool a maximum of 3 times.
+    IF there are several IBANs, asks the user which one he wants to analyze
+    When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything along the operation_success  = true
     """,
-    model="o3-mini",  # Adjust model as needed
-    tools=[DealWithAnalyticsTask]
+    model=model,  # Adjust model as needed
+    tools=[DealWithAnalyticsTask],
+    output_type =AnalyzerOutput
 )
 
 async def main():

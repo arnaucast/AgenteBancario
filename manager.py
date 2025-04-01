@@ -83,11 +83,7 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
         # DEBUG: Print out the full context being sent to the agent
         print("\n--- DEBUG: Agent Processing ---")
         print("Task:", task)
-        print("Context Summary:", context_summary)
-        print("Conversation History:", clean_conversation_history)
-        print("Banking Context:", banking_context.__dict__ if banking_context else "No Banking Context")
-        print("--- END DEBUG ---\n")
-        
+
         existing_tasks = [msg["content"] for msg in clean_conversation_history if msg["role"] == "user"]
         if task_with_context not in existing_tasks:
             clean_conversation_history.append({"content": task_with_context, "role": "user"})
@@ -96,12 +92,16 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
         print(clean_conversation_history)
         
         try:
-            print("HOLITAA")
             result = await Runner.run(agent, clean_conversation_history, context=banking_context)
             agent_response = result.final_output_as(agent)
-            clean_conversation_history.append({"content": agent_response, "role": "assistant"})
-            print("HOLITAAA22")
-            return conversation_history, agent_response, False
+            print("Agent")
+            clean_conversation_history.append({"content": agent_response.message_to_client, "role": "assistant"})
+            print("conv")
+            print(conversation_history)
+            print(agent_response.message_to_client)
+            print(agent_response.operation_success)
+            print(False)
+            return conversation_history, agent_response.message_to_client,agent_response.operation_success, False
         
         except Exception as e:
             print("Full Exception Type:", type(e))
@@ -122,7 +122,7 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
                 error_msg = f"Banking Assistant: I'm experiencing technical difficulties: {str(e)}"
             
             clean_conversation_history.append({"content": error_msg, "role": "assistant"})
-            return conversation_history, error_msg, False
+            return conversation_history, error_msg,True, False
 
     return run_async_with_event_loop(async_process())
 

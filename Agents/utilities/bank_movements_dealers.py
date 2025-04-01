@@ -8,10 +8,14 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os 
 load_dotenv()
+'''
 conn = psycopg2.connect(
     dsn=os.getenv("CONEXION_BBDD")
 )
 cursor = conn.cursor()
+'''
+from __init__ import conn,cursor 
+
 import pandas as pd
 import re
 from typing import Optional

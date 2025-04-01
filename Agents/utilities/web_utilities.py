@@ -14,17 +14,42 @@ from manager import (
     task_separator_agent, 
     context_summarizer_agent
 )
+from .change_get_data_db import get_ibans_for_nif,get_pans
+def AddContextToAgent(agent_name,selected_nif):
+    
+    if agent_name =="Transfer Coordinator":
+        ibans = get_ibans_for_nif(selected_nif)
+        if len(ibans) > 0:
+            return f"Este cliente tiene los siguientes IBANs, resuelve con ellos su petición: {ibans}"
+        else: 
+            return ""
+    elif agent_name =="Analytics":
+        ibans = get_ibans_for_nif(selected_nif)
+        if len(ibans) > 0:
+            return f"Este cliente tiene los siguientes IBANs, resuelve con ellos su petición: {ibans}"
+        else: 
+            return ""
+    elif agent_name =="Credit Card Cordinator":
+        pans=  get_pans(selected_nif)
+        if len(pans) > 0:
+            return f"Este cliente tiene los siguientes PANs, resuelve con ellos su petición: {pans}"
+        else: 
+            return ""
+    else:
+        return ""
+
 
 # Wrapper to run process_single_task in a thread and capture the result
 def run_task_in_thread(current_agent, current_task, chat_history, context_summary, banking_context, result_queue):
-    conversation_history, response, _ = process_single_task(
+    conversation_history, response,success, _ = process_single_task(
         current_agent,
         current_task,
         chat_history,
         context_summary,
         banking_context
     )
-    result_queue.put((conversation_history, response))
+    result_queue.put((conversation_history, response,success))
+
 
 def process_task_with_threading(current_agent, current_task, chat_history, context_summary, banking_context):
     # Prepare threading components
@@ -53,13 +78,16 @@ def process_task_with_threading(current_agent, current_task, chat_history, conte
     
     # Wait for the thread to finish and get the result
     task_thread.join()
-    conversation_history, response = result_queue.get()
+    conversation_history, response,task_success= result_queue.get()
+    print("task state")
+
+    print(task_success)
 
     # Final UI update
     status_container.text("Done!")
     progress_bar.progress(1.0)
     
-    return conversation_history, response
+    return conversation_history, response,task_success
 
 # New wrapper for task_separator_agent
 def run_separator_in_thread(task_separator_agent, filtered_input, result_queue):
@@ -94,17 +122,6 @@ def process_separator_with_threading(task_separator_agent, filtered_input):
     progress_bar.progress(1.0)
     
     return separator_result
-
-# Wrapper to run process_single_task in a thread and capture the result
-def run_task_in_thread(current_agent, current_task, chat_history, context_summary, banking_context, result_queue):
-    conversation_history, response, _ = process_single_task(
-        current_agent,
-        current_task,
-        chat_history,
-        context_summary,
-        banking_context
-    )
-    result_queue.put((conversation_history, response))
 
 
 # New wrapper for banking_guardrail_agent
