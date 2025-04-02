@@ -14,6 +14,7 @@ from datetime import datetime
 import time
 import threading
 from queue import Queue
+import markdown
 # Custom imports (assuming these are in your project)
 from agents import Runner
 from manager import (
@@ -415,8 +416,6 @@ def main():
         if not message.get("hidden", False):
             with st.container():
                 if message["role"] == "user":
-
-           
                     st.markdown(f"""
                     <div class="chat-message user">
                         <div class="content">
@@ -429,7 +428,6 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
                 else:
-                    
                     st.markdown(f"""
                     <div class="chat-message assistant">
                         <div class="content">

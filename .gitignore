@@ -1,6 +1,6 @@
 # .gitignore
 .env
-agente_bancario_final/
+agente_bancario_git/
 __pycache__/
 *.pyc
 *.pyo

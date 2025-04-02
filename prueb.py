@@ -18,46 +18,56 @@ load_dotenv()
 
 model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
 
-# Define the banking guardrail agent
-BANKING_GUARDRAIL_PROMPT = (
-    """You are an agent that filters client input to keep only banking-related requests that a banking agent can handle.
+from __init__ import conn,cursor 
+
+import pandas as pd
+import numpy as np
+from openai import OpenAI
+import psycopg2
+from psycopg2.extras import execute_values
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+
+
+
+
+
+
+import pandas as pd
+
+
+# Optionally save to CSV if needed
+# datos.to_csv("banking_explanations.csv", index=False)
+
+# Main execution
+if __name__ == "__main__":
+    # Assuming 'datos' is your dataframe
+    # Example usage:
+    # datos = pd.DataFrame({'respuesta BOT': ['response1', 'response2', ...]})
     
-    Examples of banking-related requests include:
-    - Checking transactions
-    - Sending money
-    - Account balance inquiries
-    - Payment scheduling
-    - Asking for news specifically about Banc Sabadell
-    - Data Analysis of bank movements 
+    # Step 1: Create embeddings
+    datos_with_embeddings = create_embeddings_df(datos)
+    print("Embeddings created")
+    print(len(datos_with_embeddings["respuesta_embedd"].iloc[0]))
     
-    IMPORTANT: Asking for news about Banc Sabadell is a valid request and should be kept.
-    """
-)
-
-class BankingFilterOutput(BaseModel):
-    filtered_text: str
-    """The input text with non-banking-related content removed"""
-    non_banking_content_removed: bool
-    """Indicates if any non-banking content was removed"""
-
-banking_guardrail_agent = Agent(
-    name="BankingFilterGuardrail",
-    instructions=BANKING_GUARDRAIL_PROMPT,
-    model="o3-mini",
-    output_type=BankingFilterOutput,
-)
-
-# List of 20 test examples in Spanish (mix of banking and non-banking)
-test_examples = [
-    "Quiero revisar mis transacciones de este mes"
-]
-
-# Process each example and print original text and result
-for example in test_examples:
-    prueba = Runner.run_sync(banking_guardrail_agent, example)
-    guardrail_output = prueba.final_output_as(banking_guardrail_agent)
+    # Step 2: Upload to Supabase
+    upload_to_supabase(datos_with_embeddings)
+    print("Upload supabase")
     
-    print(f"Original text: {example}")
-    print(f"Filtered text: {guardrail_output.filtered_text}")
-    print(f"Non-banking content removed: {guardrail_output.non_banking_content_removed}")
-    print("-" * 50)
+    # Step 3: Test the matching function
+    test_text = "SI want to know what is the credit score"
+    top_matches = get_top3_matches(test_text)
+    
+    print("\nTop 3 matches:")
+    for i, match in enumerate(top_matches, 1):
+        print(f"{i}. Text: {match['text']}")
+        print(f"   Similarity: {match['similarity']:.4f}")
+        

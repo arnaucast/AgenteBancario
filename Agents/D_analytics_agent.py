@@ -26,7 +26,6 @@ async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: s
     # Step 1: Plan the searches
     print("Text received")
     print(text)
-    print("A1")
     IBAN_CORRECTO = CheckIfIBANBelongs(iban_emisor,ctx.context.nif)
     if IBAN_CORRECTO:
         data = get_iban_data([iban_emisor])
@@ -36,26 +35,25 @@ async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: s
         
 
         # Step 2: Perform the searches sequentially
-        print("A2")
+        
         print(categories_found.items_found)
-        print("bbb")
+        
         categories_found = [item.category for item in categories_found.items_found]
         print(categories_found)
         if categories_found:
             categories_real_found = await Given_List_categ_find_names(categories_found,5)
-            print("B")
+            
             print(categories_real_found)
             categ_found = str(categories_real_found)
             categories_found = await find_filtered_categories(f"User question: {text} and the categories names you need to filter {categ_found} ")
-            print("C")
+            
             print(categories_found)
             categories_found = [item.category for item in categories_found.items_found]
-            print("D")
+            
             print(categories_found)
         
         
         # Step 3: Summarize the results
-        print("A3")
         
         if categories_found:
             final_result = await execute_code_agent(data,f"User question: {text}. Filter for the categories that solve the user question. You can choose from these: {categories_found}")
@@ -105,7 +103,7 @@ analyzer_of_data = Agent[BankingContext](
     instructions="""1. Use DealWithAnalyticsTask to perform the analysis. 
     Send only the user's exact text to the tool and the IBAN emisor. Try using this tool a maximum of 3 times.
     IF there are several IBANs, asks the user which one he wants to analyze
-    When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything along the operation_success  = true
+    When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything, along the operation_success  = true
     """,
     model=model,  # Adjust model as needed
     tools=[DealWithAnalyticsTask],

@@ -501,6 +501,7 @@ analyze_user_data = Agent(
    - Visual structure
    - Concise explanations of key findings
 4. Include a brief summary or interpretation of the data
+5. First line is a 10 word summary of what you are analyzing, don't use ###
     """,
     model=model,
     output_type=str  # Assuming it returns a confirmation message or error
