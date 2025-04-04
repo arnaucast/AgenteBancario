@@ -489,16 +489,6 @@ def main():
             user_input = st.chat_input("Ask about banking tasks...")
             if user_input:
                 print("Hola1")
-                st.markdown(f"""
-                    <div class="chat-message user">
-                        <div class="content">
-                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=Amaya" class="avatar"  class="avatar" />
-                            <div class="message">
-                                {user_input}
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
                 print("Hola2")
                 st.session_state.processing_message = user_input
                 st.session_state.task_solved = False
