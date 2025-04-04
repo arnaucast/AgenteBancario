@@ -46,6 +46,7 @@ send_transfer_to_iban_receptor = Agent(
 If provided with both the IBAN of the emisor (IBAN_EMISOR) and the IBAN of the receptor (IBAN_RECEPTOR) for a transfer, use the available tool to execute the transfer.
 If the order has been able to be processed, return the message and also operation_success to True
 If the order hasn't been able to be processed, return the message and also operation_success to False
+If not enough information, tell the agent to ask the client for the information
     """,
     model=model,
     tools=[transfer_money_and_log],
@@ -69,14 +70,13 @@ class TransferOutput2(BaseModel):
 transfer_coordinator = Agent[BankingContext](
     name="Transfer Coordinator",
     instructions="""
-
 You assist banking clients with transfers, requiring the sender’s IBAN (IBAN_EMISOR), receiver’s IBAN (IBAN_RECEPTOR), and transfer amount (import). Follow these steps:
-- If IBAN_EMISOR is missing: Use the `get_ibans` tool to fetch the client’s IBANs.
 . If multiple IBANs are returned, ask the client which one to use. If only one is returned, suggest it to the client for confirmation.
 - If IBAN_EMISOR, IBAN_RECEPTOR, and import are all available: Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation. After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
 - If `Send_Transfer_to_IBAN_receptor` returns operation_success = true, inform the client: "Transfer completed successfully!" and return operation_success = True.
 - Do not call any tool unless all its required parameters are present.
 - If client tells that he doesn't want to do this task, return operation_success = True and tell "Operación cancelada to the client"
+Respond in the client's language
     """,
 
     model=model,
@@ -86,7 +86,7 @@ You assist banking clients with transfers, requiring the sender’s IBAN (IBAN_E
      
         send_transfer_to_iban_receptor.as_tool(
             tool_name="Send_Transfer_to_IBAN_receptor",
-            tool_description="Executes a transfer using IBAN_EMISOR, IBAN_RECEPTOR, and import. Requires client confirmation."
+            tool_description="Executes a transfer using IBAN_EMISOR, IBAN_RECEPTOR, and import. Requires client confirmation and all three variables must be non empty."
         )
     ],
     output_type =TransferOutput2

@@ -20,6 +20,15 @@ from .B_credit_card_dealer import credit_card_coordinator
 from .C_transfer_dealer import transfer_coordinator
 from .G_web_researcher import  news_coordinator
 from .D_analytics_agent import analyzer_of_data
+from .J_Agentic_RAG import rag_agent
+from .K_RAG_action_finder import transfer_RAG_info,credit_card_RAG_info,analyzer_data_rag
+
+class OutputModelSelector(BaseModel):
+    agent_selected: str
+    """Name of Agent Selected"""
+    user_wants_information: bool
+    """True if user wants informations"""
+
 # Define the Agent Selector Agent
 agent_selector_agent = Agent(
     name="Agent Selector",
@@ -29,13 +38,15 @@ agent_selector_agent = Agent(
     Your job is to:
     1. Analyze the request to identify the primary task involved (e.g., 'language translation', 'banking issue').
     2. Match the task to the most appropriate agent based on their names and descriptions.
-    3. Return a JSON-formatted string containing a single agent name, e.g., "[\"Agent_Name\"]".
-    4. If no agent matches, return an empty list as a JSON string: "[]".
-    5. If multiple agents could apply, choose the one that best fits the request based on specificity and relevance.
-    6. If asked to retry due to invalid output, ensure the output is a valid JSON string like "[\"Agent_Name\"]".
+    3. If multiple agents could apply, choose the one that best fits the request based on specificity and relevance.
+    4. For user_wants_information return True only if the user wants to know how to do something or wants information about a product or bank service
+    For example: "Quiero hacer una transferencia": False "Como se hace una transferencia" True "Por qué no puedo realizar transferencias" True
+
     """,
-    model=model
+    model=model,
+    output_type=OutputModelSelector
 )
+
 
 # External tool registry (all are agents now)
 agent_registry = {
@@ -44,22 +55,31 @@ agent_registry = {
         "agent": credit_card_coordinator,  # Assuming this is an Agent object
         "description": """Handles credit card requests and can block credit cards, unblock them, check why a client can't buy
                          (monthly spending limit, current month spending)
-                       and find the reason on why a client can't buy things with a credit card"""
+                       and find the reason on why a client can't buy things with a credit card""",
+        "agent_rag_info":credit_card_RAG_info,
+        "agent_rag_researcher":rag_agent
     },
     "Transfer_Coordinator": {
         "type": "agent",
         "agent": transfer_coordinator,  # Assuming this is an Agent object
-        "description": "Handles transfers"
+        "description": "Handles transfers",
+        "agent_rag_info": transfer_RAG_info,
+        "agent_rag_researcher":rag_agent
     },
     "News_Coordinator": {
         "type": "agent",
         "agent": news_coordinator,  # Assuming this is an Agent object
-        "description": "Does research on news related to Banc Sabadell"
+        "description": "Does research on news related to Banc Sabadell",
+        "agent_rag_info":None,
+        "agent_rag_researcher":rag_agent
     },
         "Analyzer of data": {
         "type": "agent",
         "agent": analyzer_of_data,  # Assuming this is an Agent object
-        "description": "Does analytics on bank movements. If you find the word analysis or analytics, it is the agent "
+        "description": "Does analytics on bank movements. If you find the word analysis or analytics, it is the agent ",
+        "agent_rag_info":analyzer_data_rag,
+        "agent_rag_researcher":rag_agent
+        
     }
     # Add 18+ more agents here
 }
@@ -74,48 +94,11 @@ def configure_agent_coordinator(user_request):
     for attempt in range(max_attempts):
         # Run the agent selector
         result = Runner.run_sync(agent_selector_agent, conversation_history)
-        selected_agent_output = result.final_output_as(agent_selector_agent)
+        selected_agent_output = result.final_output_as(OutputModelSelector)
+        selected_agent_name = selected_agent_output.agent_selected
         print("Selected agent output:")
-        print(selected_agent_output)
-        
-        # Clean up the output if it's a string
-        if isinstance(selected_agent_output, str):
-            # Remove Markdown code block syntax if present
-            selected_agent_output = selected_agent_output.replace("```json", "").replace("```", "").strip()
-            
-            import json
-            try:
-                # Parse as JSON directly
-                selected_agent_names = json.loads(selected_agent_output)
-            except json.JSONDecodeError:
-                # Handle common issues like single quotes
-                try:
-                    import ast
-                    selected_agent_names = ast.literal_eval(selected_agent_output)
-                except (SyntaxError, ValueError):
-                    # If all attempts fail, try again
-                    retry_message = f"Invalid output format: {selected_agent_output}. Return a valid JSON string like [\"Agent_Name\"]. No code blocks."
-                    conversation_history.append({"content": retry_message, "role": "user"})
-                    continue
-        else:
-            selected_agent_names = selected_agent_output  # Handle case where output is already a list
-        
-        # Validate output
-        if not isinstance(selected_agent_names, list):
-            retry_message = f"Output must be a list, got {type(selected_agent_names)}. Return a valid JSON string like [\"Agent_Name\"]."
-            conversation_history.append({"content": retry_message, "role": "user"})
-            continue
-        
-        # Check if the list is empty or has exactly one agent
-        if len(selected_agent_names) > 1:
-            retry_message = f"Output must contain exactly one agent, got {selected_agent_names}. Select the most likely agent."
-            conversation_history.append({"content": retry_message, "role": "user"})
-            continue
-        elif not selected_agent_names:  # Empty list
-            return None  # No matching agent found
-        
-        # Extract the single agent name
-        selected_agent_name = selected_agent_names[0]
+        print(selected_agent_name)
+        user_information = selected_agent_output.user_wants_information
         
         # Check if the agent name is valid
         if selected_agent_name not in agent_registry:
@@ -127,7 +110,9 @@ def configure_agent_coordinator(user_request):
         break
     else:
         # Max attempts reached
-        return None
+        return None, None
+    print("1")
 
+    print(agent_registry[selected_agent_name]["agent"])
     # Return the selected agent directly since everything is an agent now
-    return agent_registry[selected_agent_name]["agent"]
+    return agent_registry[selected_agent_name]["agent"],user_information,agent_registry[selected_agent_name]["agent_rag_info"],agent_registry[selected_agent_name]["agent_rag_researcher"]

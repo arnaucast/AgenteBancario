@@ -41,7 +41,7 @@ TASK_SEPARATOR_PROMPT = (
     1. Identify individual tasks or questions in the input.
     2. Return each task as a separate item in a list so the next agent can handle each one separately.
     
-    IMPORTANT: Do NOT filter any content - your only job is to separate multiple requests into individual items.
+    IMPORTANT: Do NOT filter any content,use the full text of the task, don't do a summary- your only job is to separate multiple requests into individual items.
     
     Examples of tasks might include:
     - 'check my account balance'

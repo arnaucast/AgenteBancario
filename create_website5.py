@@ -27,7 +27,7 @@ from manager import (
     task_separator_agent, 
     context_summarizer_agent
 )
-from Agents.utilities.web_utilities import process_task_with_threading,process_separator_with_threading,process_guardrail_with_threading,AddContextToAgent
+from Agents.utilities.web_utilities2 import process_task_with_threading,process_separator_with_threading,process_guardrail_with_threading,AddContextToAgent,process_task_with_threading_concurrent
 from Agents.utilities.change_get_data_db import BankingContext,get_all_distinct_cifs,get_ibans_for_web,get_saldos_by_IBAN,get_pan_by_cif,get_name_for_web
 from __init__ import unique_contr_mov,unique_type_clie,unique_cifs_with_mov,get_tipo_cliente_iban
 # Tracing and environment configuration (you might want to remove or modify these)
@@ -104,6 +104,8 @@ def initialize_session_state():
     """Initialize Streamlit session state variables."""
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    if "chat_history_agent" not in st.session_state:
+        st.session_state.chat_history_agent = []
     if "thread_id" not in st.session_state:
         st.session_state.thread_id = str(uuid.uuid4())
     if "banking_context" not in st.session_state:
@@ -117,6 +119,12 @@ def initialize_session_state():
     if "current_agent" not in st.session_state:
         print("DEBUG: agent gets reset here 4 - Initial setup")
         st.session_state.current_agent = None
+    if "current_rag_info" not in st.session_state:
+        st.session_state.current_rag_info = None
+    if "current_rag_research" not in st.session_state:
+        st.session_state.current_rag_research = None
+    if "is_question_rag" not in st.session_state:
+        st.session_state.is_question_rag = False
     if "current_task" not in st.session_state:
         st.session_state.current_task = None
     if "context_summary" not in st.session_state:
@@ -129,6 +137,13 @@ def initialize_session_state():
         st.session_state.Usuario_click = ''
     if "task_success" not in st.session_state:
         st.session_state.task_success = False
+    if "waiting_for_task_confirmation" not in st.session_state:
+        st.session_state.waiting_for_task_confirmation = False
+    if "waiting_for_rag_confirmation" not in st.session_state:
+        st.session_state.waiting_for_rag_confirmation = False
+
+
+        
 
 def main():
     initialize_session_state()
@@ -412,6 +427,7 @@ def main():
 
     st.caption("Ask me about banking tasks and I'll assist you step-by-step!")
 
+    print( st.session_state.chat_history)
     for message in st.session_state.chat_history:
         if not message.get("hidden", False):
             with st.container():
@@ -443,28 +459,20 @@ def main():
     # Add Yes/No buttons only for the last message, outside the loop
     if st.session_state.chat_history:  # Ensure chat history is not empty
         last_message = st.session_state.chat_history[-1]  # Get the last message
-        if last_message["role"] == "assistant" and "Would you like to proceed with the next task" in last_message["content"]:
+        if last_message["role"] == "assistant" and ("Would you like to proceed with the next task" in last_message["content"]
+                                                    or "Quieres que ejecute la siguiente consulta" in last_message["content"]
+                                                    or st.session_state.waiting_for_rag_confirmation == True):
             # Only show buttons if the user hasn't responded with "yes" or "no" yet
             last_user_message = next((msg for msg in reversed(st.session_state.chat_history) if msg["role"] == "user"), None)
             if not last_user_message or (last_user_message["content"].lower() not in ["yes", "no"]):
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Yes", key=f"yes_button_{st.session_state.thread_id}"):
-                        st.session_state.chat_history.append({
-                            "role": "user",
-                            "content": "yes",
-                            "timestamp": datetime.now().strftime("%I:%M %p")
-                        })
                         st.session_state.Usuario_click = "SI"
                         print("DEBUG: Yes button clicked, Usuario_click set to SI")
                         st.rerun()
                 with col2:
                     if st.button("No", key=f"no_button_{st.session_state.thread_id}"):
-                        st.session_state.chat_history.append({
-                            "role": "user",
-                            "content": "no",
-                            "timestamp": datetime.now().strftime("%I:%M %p")
-                        })
                         st.session_state.Usuario_click = "NO"
                         print("DEBUG: No button clicked, Usuario_click set to NO")
                         st.rerun()
@@ -474,8 +482,7 @@ def main():
     print(st.session_state.chat_enabled)
     print(st.session_state.task_solved)
     print(st.session_state.processing_message)
-    print("Sep_tasks")
-    print(st.session_state.separated_tasks)
+
     if st.session_state.chat_enabled:
         if st.session_state.task_solved:
             print("1uicoee")
@@ -500,21 +507,32 @@ def main():
                         "content": feedback,
                         "timestamp": timestamp
                     })
+                    st.session_state.chat_history_agent.append({
+                        "role": "user",
+                        "content": feedback
+                    })
+                    
                     print("DEBUG: appending because feedback")
 
                 # Replace the existing "yes, solved" block with this:
                 # Replace the entire "yes, solved" block with this:
-                if st.session_state.task_success == True:
+                if st.session_state.task_success == True: #if task success, look at next task if there are more. If not, original behaviour of setting task solved and waiting for client input
                     st.session_state.task_success = False
-                    clean_history = prepare_clean_history(st.session_state.chat_history)
+                    clean_history = st.session_state.chat_history_agent
+                  
                     print("DEBUG: clean_conversation_history before summarization:", clean_history)
                     summary_result = Runner.run_sync(context_summarizer_agent, clean_history)
                     st.session_state.context_summary = summary_result.final_output_as(context_summarizer_agent).summary
                     
                     # Check if there are more tasks in separated_tasks
+                    print("Sep_tasks")
+                    print(st.session_state.separated_tasks)
+                    #Aquí se entra cuando hay más de una tarea, se pregunta al cliente . Mira el último mensaje y si es first task compl.. añade botones
+                    # Check if there are more tasks in separated_tasks
                     if (hasattr(st.session_state, 'separated_tasks') and 
                         st.session_state.separated_tasks and 
                         len(st.session_state.separated_tasks) > 1):
+                        print("Dealing with sep")
                         # Remove the completed task (first one)
                         completed_task = st.session_state.separated_tasks.pop(0)
                         
@@ -524,6 +542,12 @@ def main():
                             "timestamp": datetime.now().strftime("%I:%M %p"),
                             "hidden": True
                         })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": f"Task completed. Summary: {st.session_state.context_summary}"
+                        })
+
                         
                         # Store that we're waiting for confirmation on next task
                         next_task = st.session_state.separated_tasks[0] if st.session_state.separated_tasks else None
@@ -535,21 +559,35 @@ def main():
                                 "content": f"First task completed. Would you like to proceed with the next task: '{next_task.order}'? (Yes/No)",
                                 "timestamp": datetime.now().strftime("%I:%M %p")
                             })
+                            st.session_state.chat_history_agent.append({
+                                "role": "assistant",
+                                "content": f"First task completed. Would you like to proceed with the next task: '{next_task.order}'? (Yes/No)"
+                            })
+
+                            
 
                             st.session_state.task_solved = False
                     else:
-                        # Original behavior when there were no separated tasks or only one task
-                        st.session_state.chat_history.append({
+
+                        st.session_state.chat_history_agent.append({
                             "role": "assistant",
-                            "content": f"Task completed. Summary: {st.session_state.context_summary}",
-                            "timestamp": datetime.now().strftime("%I:%M %p"),
-                            "hidden": True
+                            "content": f"Task completed. Summary: {st.session_state.context_summary}"
                         })
+
+                        
+
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": "Quieres algo más?",
                             "timestamp": datetime.now().strftime("%I:%M %p")
                         })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": "Quieres algo más?"
+                        })
+
+                        
                         st.session_state.task_solved = True
                         st.session_state.current_agent = None
                         st.session_state.current_task = None
@@ -566,15 +604,16 @@ def main():
                     st.rerun()
 
                 # Add this new else-if block right after the "yes, solved" block but before the "else" block:
-                elif (hasattr(st.session_state, 'waiting_for_task_confirmation') and 
-                    st.session_state.waiting_for_task_confirmation):
+                elif (st.session_state.waiting_for_task_confirmation or st.session_state.waiting_for_rag_confirmation ): #chatbot is asking client if he wnts to do the next task
                     print("quico0")
-                    if st.session_state.Usuario_click == "SI":
+                    if st.session_state.Usuario_click == "SI": #define el nuevo agente
                         print("quico1")
                         st.session_state.Usuario_click = ""
+
                         # User wants to proceed with next task
                         st.session_state.current_task = st.session_state.next_task
-                        st.session_state.current_agent , is_rag_info,agent_rag_info, agent_rag_researcher= configure_agent_coordinator(st.session_state.current_task)
+                        st.session_state.current_agent ,  st.session_state.is_question_rag , st.session_state.current_rag_info, st.session_state.current_rag_research = configure_agent_coordinator(st.session_state.current_task)
+
                         if st.session_state.current_agent is None:
                             st.session_state.current_agent = define_default_agent()
                             
@@ -584,18 +623,18 @@ def main():
                         if context_adicional != "":
                             st.session_state.current_agent.instructions += context_adicional
 
-                        new_conversation_history = [
+                        new_conversation_history_agent = [
                             {"content": f"First task completed. Would you like to proceed with the next task: '{st.session_state.current_task}'? (Yes/No)", "role": "system"},
-                            {"content": feedback.lower(), "role": "user", "timestamp": datetime.now().strftime("%I:%M %p")}
+                            {"content": feedback.lower(), "role": "user"}
                         ]
 
                         # Assign the updated list to st.session_state.chat_history
-                        st.session_state.chat_history = new_conversation_history
+                        st.session_state.chat_history_agent = new_conversation_history_agent
                         # Process the task immediately
                         conversation_history, response,task_success= process_task_with_threading(
                             st.session_state.current_agent,
                             st.session_state.current_task,
-                            prepare_clean_history(st.session_state.chat_history) ,
+                            st.session_state.chat_history_agent ,
                             st.session_state.context_summary,
                             st.session_state.banking_context
                         )
@@ -605,10 +644,28 @@ def main():
                             "content": response,
                             "timestamp": datetime.now().strftime("%I:%M %p")
                         })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": response
+                        })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": response
+                        })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": response
+                        })
+
+                        
                         st.session_state.waiting_for_task_confirmation = False
+                        st.session_state.waiting_for_rag_confirmation = False 
                         del st.session_state.next_task
                         
-                    elif st.session_state.Usuario_click == "NO":
+                    elif st.session_state.Usuario_click == "NO": #le preguntasi quiere algo más y resolvemos duda
                         print("quico2")
                         st.session_state.Usuario_click = ""
                         # User doesn't want to continue
@@ -617,6 +674,13 @@ def main():
                             "content": "Okay, I won't proceed with the remaining tasks. Do you want anything else?",
                             "timestamp": datetime.now().strftime("%I:%M %p")
                         })
+
+                        st.session_state.chat_history_agent.append({
+                            "role": "assistant",
+                            "content": "Okay, I won't proceed with the remaining tasks. Do you want anything else?"
+                        })
+
+                        
                         st.session_state.task_solved = True
                         st.session_state.current_agent = None
                         st.session_state.current_task = None
@@ -625,7 +689,7 @@ def main():
                         del st.session_state.next_task
                     
                     st.rerun()
-                else:
+                else: #continuamos con la tarea original
                     print(f"DEBUG: continuing task, current agent: {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
                     current_agent = st.session_state.current_agent
                     if isinstance(current_agent, dict):
@@ -634,7 +698,7 @@ def main():
                     conversation_history, response,task_success = process_task_with_threading(
                         current_agent,
                         st.session_state.current_task,
-                        prepare_clean_history(st.session_state.chat_history)  ,
+                        st.session_state.chat_history_agent  ,
                         st.session_state.context_summary,
                         st.session_state.banking_context
                     )
@@ -645,18 +709,25 @@ def main():
                         "content": response,
                         "timestamp": timestamp
                     })
+
+                    st.session_state.chat_history_agent.append({
+                        "role": "assistant",
+                        "content": response
+                    })
+
+                    
                     print("DEBUG: Appended agent response to chat_history:", response)
                     st.rerun()
 
     # Process message
-    if st.session_state.processing_message and st.session_state.chat_enabled:
+    if st.session_state.processing_message and st.session_state.chat_enabled: #entra aquí cuando usuario ha hecho pregunta y no tenemos su feedback
         user_input = st.session_state.processing_message
         st.session_state.processing_message = None
 
-        try:
+        try: 
             print("DEBUG: Processing message")
             print(f"DEBUG: current_agent at start: {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
-            if st.session_state.current_agent is not None:
+            if st.session_state.current_agent is not None: #nunca entra aquí 
                 current_agent = st.session_state.current_agent
                 
                 if isinstance(current_agent, dict):
@@ -668,7 +739,7 @@ def main():
                 conversation_history, response,task_success = process_task_with_threading(
                     current_agent,
                     st.session_state.current_task,
-                    prepare_clean_history( st.session_state.chat_history),
+                    st.session_state.chat_history_agent,
                     st.session_state.context_summary,
                     st.session_state.banking_context
                 )
@@ -678,14 +749,15 @@ def main():
                 print(response)
                 
                 st.session_state.chat_history = conversation_history
+                st.session_state.chat_history_agent = conversation_history
                 print(f"DEBUG: After process_single_task, current_agent: {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
             
-            else:
+            else: #This is when we don't have an agent selected, user first question, we need to pass the question by the banking_guardrail, select agent, etc...
                 guardrail_result = process_guardrail_with_threading(banking_guardrail_agent, user_input)
                 guardrail_output = guardrail_result.final_output_as(banking_guardrail_agent)
                 filtered_input = guardrail_output.filtered_text
                 
-                if guardrail_output.non_banking_content_removed:
+                if guardrail_output.non_banking_content_removed and filtered_input == "": #if contant removed 
                     response = "Non-banking content removed. Processing only banking-related requests."
                     st.session_state.task_solved = True
                 else:
@@ -693,7 +765,7 @@ def main():
                     separated_tasks = separator_result.final_output_as(task_separator_agent).items_found
                     st.session_state.separated_tasks = separated_tasks  # Store all tasks
                     
-                    if not separated_tasks:
+                    if not separated_tasks: #there are no tasks found
                         agent = define_default_agent()
                         new_conversation_history = [
                             {"content": f"Context from previous tasks: {st.session_state.context_summary}", "role": "system"},
@@ -702,58 +774,119 @@ def main():
                         result = Runner.run_sync(agent, new_conversation_history, context=st.session_state.banking_context)
                         response = result.final_output_as(agent)
                         st.session_state.chat_history.extend(new_conversation_history[1:])
+                        st.session_state_chat_history_agent.extend(new_conversation_history[1:])
                         print("Appending chat if not separated")
-                    else:
+                    else: #we take the first order
                         print("####################################### SEPARATED TASKS ##############################################")
                         print(separated_tasks)
                         st.session_state.current_task = separated_tasks[0].order
                         
-                        current_agent,is_rag_info ,agent_rag_info,agent_rag_researcher= configure_agent_coordinator(st.session_state.current_task)
-                        print(f"DEBUG: Setting current_agent not separated tasks:  {current_agent.name if current_agent is not None else 'None'}")
-                        current_agent = current_agent if current_agent is not None else define_default_agent()
-                        print(f"DEBUG: Setting current_agent not separated tasks2:  {current_agent.name if current_agent is not None else 'None'}")
-                        context_adicional = AddContextToAgent(current_agent.name,st.session_state.banking_context.nif)
-                        if hasattr(current_agent, 'instructions'):
-                            current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
+                        st.session_state.current_agent ,  st.session_state.is_question_rag , st.session_state.current_rag_info, st.session_state.current_rag_research = configure_agent_coordinator(st.session_state.current_task)
+                        print("agent coordinator")
+                        print( st.session_state.is_question_rag)
+                        print("Quicoo")
+                        print(f"DEBUG: Setting current_agent not separated tasks:  {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
+                        st.session_state.current_agent = st.session_state.current_agent if st.session_state.current_agent is not None else define_default_agent()
+                        context_adicional = AddContextToAgent(st.session_state.current_agent.name,st.session_state.banking_context.nif)
+                        if hasattr(st.session_state.current_agent, 'instructions'):
+                            st.session_state.current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
                         if context_adicional != "":
-                            current_agent.instructions += context_adicional
+                            st.session_state.current_agent.instructions += context_adicional
                         print("Contexto_final")
-                        print(current_agent.instructions)
-                        new_conversation_history = [
+                        print(st.session_state.current_agent.instructions)
+                        new_conversation_history_chat = [
                             {"content": f"Context from previous tasks: {st.session_state.context_summary}", "role": "system"},
                             {"content": st.session_state.current_task, "role": "user", "timestamp": datetime.now().strftime("%I:%M %p")}
                         ]
-                        conversation_history, response,task_success = process_task_with_threading(
-                            current_agent,
-                            st.session_state.current_task,
-                            prepare_clean_history(new_conversation_history) ,
-                            st.session_state.context_summary,
-                            st.session_state.banking_context
-                        )
-                        st.session_state.task_success = task_success
-                        print("Agent response")
-                        print(response)
-                        st.session_state.chat_history.extend(new_conversation_history[1:])
-                        print("DEBUG. appending when separated tasks")
-                        print(f"DEBUG: Setting current_agent to:  {current_agent.name if current_agent is not None else 'None'}")
-                        st.session_state.current_agent = current_agent
 
-                timestamp = datetime.now().strftime("%I:%M %p")
-                st.session_state.chat_history.append({
-                    "role": "assistant", 
-                    "content": response, 
-                    "timestamp": timestamp
-                })
+                        new_conversation_history_agent=[
+                            {"content": f"Context from previous tasks: {st.session_state.context_summary}", "role": "system"},
+                            {"content": st.session_state.current_task, "role": "user"}
+                        ]
+                        if  st.session_state.is_question_rag == True: #we get the information and then mark as sucess, show the buttons to the user and set the current agent to the action agent
+                            print("Gestionando RAG")
+                            conversation_history, response,task_success,response_info_rag = process_task_with_threading_concurrent(
+                                                         st.session_state.current_rag_info,
+                                                        st.session_state.current_rag_research,
+                                                        st.session_state.current_task,
+                                                        new_conversation_history_agent ,
+                                                        st.session_state.context_summary,
+                                                        st.session_state.banking_context
+                                                    )
+                            print("quuuuuuuuuuuu")
+                            st.session_state.chat_history.extend(new_conversation_history_chat[1:])
+                            st.session_state.chat_history_agent.extend(new_conversation_history_agent[1:])
+
+                            print("quuuuuuuuuuuuuuuuuuuuuuu2")
+                            
+                            print(f"DEBUG: Setting current_agent rag to:  {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
+                            print(f"Its response is {response}")
+                            st.session_state.waiting_for_rag_confirmation = True
+                            st.session_state.task_success = False
+                            st.session_state.next_task = st.session_state.current_task
+                            timestamp = datetime.now().strftime("%I:%M %p")
+                            st.session_state.chat_history.append({
+                                "role": "assistant", 
+                                "content": response, 
+                                "timestamp": timestamp
+                            })
+                            '''st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": f"Quieres que ejecute la siguiente consulta o con la información ya tienes suficiente '{st.session_state.next_task}'? (Yes/No)",
+                                "timestamp": datetime.now().strftime("%I:%M %p")
+                            })'''
+
+                            st.session_state.chat_history_agent.append({
+                                "role": "assistant", 
+                                "content": response
+                            })
+                            '''st.session_state.chat_history_agent.append({
+                                "role": "assistant",
+                                "content": f"Quieres que ejecute la siguiente consulta o con la información ya tienes suficiente '{st.session_state.next_task}'? (Yes/No)"
+                            })'''
+                        else:
+                            conversation_history, response,st.session_state.task_success = process_task_with_threading(
+                                st.session_state.current_agent,
+                                st.session_state.current_task,
+                                new_conversation_history_agent ,
+                                st.session_state.context_summary,
+                                st.session_state.banking_context
+                            )
+                            st.session_state.chat_history.extend(new_conversation_history_chat[1:])
+                            st.session_state.chat_history_agent.extend(new_conversation_history_agent[1:])
+                            
+                            print(f"DEBUG: Setting current_agent  not rag to:  {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
+                            timestamp = datetime.now().strftime("%I:%M %p")
+                            st.session_state.chat_history.append({
+                                "role": "assistant", 
+                                "content": response, 
+                                "timestamp": timestamp
+                            })
+
+                            st.session_state.chat_history_agent.append({
+                                "role": "assistant", 
+                                "content": response
+                            })
+                                    
+
+                
                 print("DEBUG: appending here when not none")
             print(f"DEBUG: After appending response, current_agent: {st.session_state.current_agent.name if st.session_state.current_agent is not None else 'None'}")
         
         except Exception as e:
             error_message = f"Sorry, I encountered an error: {str(e)}"
+            print("err")
+            print(error_message)
             timestamp = datetime.now().strftime("%I:%M %p")
             st.session_state.chat_history.append({
                 "role": "assistant", 
                 "content": error_message, 
                 "timestamp": timestamp
+            })
+
+            st.session_state.chat_history_agent.append({
+                "role": "assistant", 
+                "content": error_message
             })
             print("DEBUG: appending exception")
         

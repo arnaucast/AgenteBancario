@@ -158,16 +158,24 @@ async def _summarize_results(search_results: Sequence[str]) -> str:
     result = await Runner.run(summary_agent, input_text)
     return str(result.final_output), True
 
+class NoticiasOutput(BaseModel):
+    message_to_client: str
+    """Information you need to tell the client"""
+    operation_success: bool
+    """Allways return True"""
+
+
 news_coordinator = Agent(
     name="News Coordinator",
-    handoff_description="Handles news searches",
     instructions="""
-Given some news to search, use run_news_research and return the result to the user
+Given some news to search, use run_news_research and return the result to the user.
+Return the message_to_client and also operation_success =True always
     """,
     model=model,  # Adjust model as needed
-    tools=[run_news_research]
+    tools=[run_news_research],
+    output_type =NoticiasOutput
 )
-
+'''
 async def main():
     topic = "news about Banco Sabadell"
     print("HOLA1")
@@ -175,4 +183,4 @@ async def main():
     print(summary.final_output)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())'''

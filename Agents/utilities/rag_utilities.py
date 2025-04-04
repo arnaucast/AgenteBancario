@@ -28,14 +28,24 @@ import psycopg2
 from psycopg2.extras import execute_values
 import os
 from dotenv import load_dotenv
-from __init__ import conn,cursor 
+conn = psycopg2.connect(
+    dsn=os.getenv("CONEXION_BBDD")
+)
+cursor = conn.cursor()
+#from __init__ import conn,cursor 
 
 # Load environment variables
+load_dotenv()
+api_key =  os.getenv("OPENAI_API_KEY")
+print(api_key)
+# Initialize OpenAI client
 load_dotenv()
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
+print(client)
 def get_embedding(text):
     """Generate embedding for a given text using OpenAI"""
     response = client.embeddings.create(
@@ -50,9 +60,10 @@ def create_embeddings_df(df):
     return df
 
 
-def get_top3_matches(input_text):
+def get_top3_matches(input_text,filter):
     """Find top 3 matching responses from Supabase based on cosine similarity"""
     try:
+     
         # Get embedding for input text
         input_embedding = get_embedding(input_text)
 
@@ -62,15 +73,16 @@ def get_top3_matches(input_text):
             SELECT respuesta_text, 
                    1 - (respuesta_embedd <=> %s::vector) as similarity
             FROM chatbot_responses
+            WHERE  "tipo" = %s
             ORDER BY similarity DESC
             LIMIT 3;
         '''
         # Convert input embedding to string format
         embedding_str = f'[{",".join(map(str, input_embedding))}]'
-        
-        cursor.execute(query, (embedding_str,))
+             
+        cursor.execute(query, (embedding_str,filter))
         results = cursor.fetchall()
-
+      
         # Format results
         matches = [
             {"text": row[0], "similarity": row[1]}

@@ -103,7 +103,8 @@ analyzer_of_data = Agent[BankingContext](
     instructions="""1. Use DealWithAnalyticsTask to perform the analysis. 
     Send only the user's exact text to the tool and the IBAN emisor. Try using this tool a maximum of 3 times.
     IF there are several IBANs, asks the user which one he wants to analyze
-    When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything, along the operation_success  = true
+    When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything, only translating it to spanish, 
+    along the operation_success  = true
     """,
     model=model,  # Adjust model as needed
     tools=[DealWithAnalyticsTask],
