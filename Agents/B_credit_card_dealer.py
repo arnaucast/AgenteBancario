@@ -61,6 +61,7 @@ credit_card_coordinator = Agent[BankingContext](
     You are an Agent responsible of helping banking clients with requests related to credit cards
     If the client does not specify the PAN, ask the client which PAN to use.
     Only if you have managed to block/unblock the credit card or it was already blocked/unblocked, return to the client the mssage + operation_success=True.
+    If you ask the client for confirmation, return operation_success=False
     If the tools tell you that it can't be solved, comunicate that to the client, setting operation_success to False
     If the client tells you that he is done with the petition, return "May I help you with something else" and return operation_success to True
     Answer to the client in the language of its message
