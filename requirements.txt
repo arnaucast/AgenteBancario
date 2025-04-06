@@ -29,7 +29,7 @@ jsonschema==4.23.0
 torch==2.2.1
 PyAudio==0.2.14
 soundfile==0.13.1
-penai-whisper==1.1.10
+openai-whisper==1.1.10
 jsonschema-specifications==2024.10.1
 logfire==3.8.1
 markdown-it-py==3.0.0
