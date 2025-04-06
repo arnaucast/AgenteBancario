@@ -74,15 +74,12 @@ import time
 import whisper
 import numpy as np
 import numpy.typing as npt
-import sounddevice as sd
 
 
-import sounddevice as sd
 import numpy as np
 import numpy as np
 import streamlit as st
 import threading
-import sounddevice as sd
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
@@ -95,7 +92,6 @@ from pydub import AudioSegment
 
 import whisper
 import streamlit as st
-import sounddevice as sd
 import wavio
 import os
 import speech_recognition as sr
