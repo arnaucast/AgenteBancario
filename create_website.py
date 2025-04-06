@@ -212,13 +212,14 @@ def get_cached_data(key, fetch_function, *args, **kwargs):
         st.session_state.cached_data[key] = fetch_function(*args, **kwargs)
     return st.session_state.cached_data[key]
 
-# Usar get_cached_data para las imágenes
-user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
-assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
 
 def main():
     st.set_page_config(page_title="Banking Assistant", page_icon="💼")
     initialize_session_state()
+    # Usar get_cached_data para las imágenes
+    user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
+    assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
+
     
     # Custom CSS
     st.markdown("""
