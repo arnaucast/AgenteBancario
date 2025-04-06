@@ -68,7 +68,6 @@ pytz==2025.1
 referencing==0.36.2
 websockets==15.0.1
 requests==2.32.3
-windows-curses==2.4.1
 rich==13.9.4
 rpds-py==0.23.1
 six==1.17.0
