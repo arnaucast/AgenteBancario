@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from agents import Agent
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -33,6 +33,7 @@ banking_guardrail_agent = Agent(
     name="BankingFilterGuardrail",
     instructions=BANKING_GUARDRAIL_PROMPT,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=BankingFilterOutput,
 )
 # Fixed Task Separator Agent to ONLY separate tasks without filtering
@@ -67,5 +68,6 @@ task_separator_agent = Agent(
     name="TaskSeparator",
     instructions=TASK_SEPARATOR_PROMPT,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=TaskSeparatorLists
 )

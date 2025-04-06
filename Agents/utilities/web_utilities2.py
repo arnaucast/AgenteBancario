@@ -18,16 +18,20 @@ import asyncio
 from .change_get_data_db import get_ibans_for_nif,get_pans
 def AddContextToAgent(agent_name,selected_nif):
     
-    if agent_name =="Transfer Coordinator":
+    if agent_name in ("Transfer Coordinator","Account_Balance"):
         ibans = get_ibans_for_nif(selected_nif)
-        if len(ibans) > 0:
-            return f"Este cliente tiene los siguientes IBANs, resuelve con ellos su petición: {ibans}"
+        if len(ibans) ==1:
+            return f"Este cliente emisor tiene el siguiente IBAN, la transferencia realízala con él: {ibans}"
+        if len(ibans) >1:
+            return f"Este cliente  emisor tiene los siguientes IBANs, pregúntale con cual quiere realizar la transferencia: {ibans}"
         else: 
             return ""
     elif agent_name =="Analytics":
         ibans = get_ibans_for_nif(selected_nif)
-        if len(ibans) > 0:
-            return f"Este cliente tiene los siguientes IBANs, resuelve con ellos su petición: {ibans}"
+        if len(ibans) ==1:
+            return f"Este cliente emisor tiene el siguiente IBAN, la transferencia realízala con él: {ibans}"
+        if len(ibans) >1:
+            return f"Este cliente emisor tiene los siguientes IBANs, pregúntale con cual quiere realizar la transferencia: {ibans}"
         else: 
             return ""
     elif agent_name =="Credit Card Cordinator":

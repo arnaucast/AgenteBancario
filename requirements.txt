@@ -21,9 +21,15 @@ httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
 importlib_metadata==8.6.1
+wavio==0.0.9
 Jinja2==3.1.6
+gtts==2.5.4
 jiter==0.9.0
 jsonschema==4.23.0
+torch==2.2.1
+PyAudio==0.2.14
+soundfile==0.13.1
+penai-whisper==1.1.10
 jsonschema-specifications==2024.10.1
 logfire==3.8.1
 markdown-it-py==3.0.0
@@ -31,7 +37,8 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 narwhals==1.30.0
 nest-asyncio==1.6.0
-numpy==2.2.3
+#numpy==2.2.3
+numpy ==1.26.4
 openai==1.66.5
 openai-agents==0.0.6
 openpyxl==3.1.5
@@ -45,6 +52,7 @@ opentelemetry-semantic-conventions==0.52b0
 packaging==24.2
 pandas==2.2.3
 pillow==11.1.0
+webrtcvad==2.0.10
 protobuf==5.29.3
 psycopg2-binary==2.9.10
 pyarrow==19.0.1
@@ -58,12 +66,15 @@ python-dotenv==1.0.1
 markdown==3.7
 pytz==2025.1
 referencing==0.36.2
+websockets==15.0.1
 requests==2.32.3
+windows-curses==2.4.1
 rich==13.9.4
 rpds-py==0.23.1
 six==1.17.0
 smmap==5.0.2
 sniffio==1.3.1
+sounddevice==0.5.1
 SpeechRecognition==3.14.1
 streamlit==1.43.2
 streamlit_mic_recorder==0.0.8

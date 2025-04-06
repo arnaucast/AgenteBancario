@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from agents import Agent
+from agents import Agent,ModelSettings
 from agents import (
     Agent,
     GuardrailFunctionOutput,
@@ -13,7 +13,6 @@ import os
 from .utilities.change_get_data_db import *
 from agents import Agent, Runner, function_tool
 model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
-from context import BankingContext
 from .utilities.analytics_subagents import *
 from .utilities.bank_movements_dealers import *
 from .utilities.bank_movements_dealers import *
@@ -28,7 +27,7 @@ async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: s
     print(text)
     IBAN_CORRECTO = CheckIfIBANBelongs(iban_emisor,ctx.context.nif)
     if IBAN_CORRECTO:
-        data = get_iban_data([iban_emisor])
+        data = get_iban_data([iban_emisor]) #we pass the iban here to collect thedata
         print(f"Hemos sacado datos de {iban_emisor}")
         data = data[["fechahora","categoria","id_signo","importe"]].to_dict()
         categories_found = await find_categories(text)
@@ -61,8 +60,6 @@ async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: s
             final_result = await execute_code_agent(data,f"User question: {text}")
         
         final_result_v2 = await AnalyzeText(text,final_result)
-        print("Final response")
-        print(final_result_v2)
         
         return final_result_v2
     else:
@@ -77,12 +74,8 @@ async def find_filtered_categories(text: str) -> CategorySeparatorLists:
     return result.final_output_as(Categories_FilteredList)
 
 async def execute_code_agent(data,text: str) -> str:
-    print("Final text")
-    print(text)
     BankingContext.data = data
     result = await Runner.run(bank_query_agent, text,context=BankingContext)
-    print("Text222")
-    print(result)
     return result.final_output_as(str)
 
 async def AnalyzeText(output_data: str,user_question) -> str:
@@ -100,13 +93,14 @@ class AnalyzerOutput(BaseModel):
 analyzer_of_data = Agent[BankingContext](
     name="Analytics",
     handoff_description="Handles analytics",
-    instructions="""1. Use DealWithAnalyticsTask to perform the analysis. 
+    instructions="""1. Always use first DealWithAnalyticsTask to perform the analysis. 
     Send only the user's exact text to the tool and the IBAN emisor. Try using this tool a maximum of 3 times.
     IF there are several IBANs, asks the user which one he wants to analyze
     When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything, only translating it to spanish, 
     along the operation_success  = true
     """,
     model=model,  # Adjust model as needed
+    model_settings = ModelSettings(temperature=0),
     tools=[DealWithAnalyticsTask],
     output_type =AnalyzerOutput
 )

@@ -71,7 +71,7 @@ def get_iban_data(ibans: List[str]) -> pd.DataFrame:
             df = pd.DataFrame(cursor.fetchall(), columns=columns)
             
             # Convert fechahora to datetime
-            df['fechahora'] = pd.to_datetime(df['fechahora'], format='%d/%m/%Y %H:%M')
+            df['fechahora'] = pd.to_datetime(df['fechahora'], format='%Y-%m-%d %H:%M:%S')
             
             return df
     

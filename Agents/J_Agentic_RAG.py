@@ -6,7 +6,7 @@ import logfire
 from pydantic import BaseModel
 from agents import function_tool, RunContextWrapper
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -67,9 +67,10 @@ rag_agent = Agent(
     name="rag_agent",
     handoff_description="Handles rag",
     instructions="""You are an agent that deals with bank clients question. You need to call  and return result to client
-    in message_to_client the message to send the client and operation_success allways to True.Use  the info given by the toolDealWithRAGAgentic. 
+    in message_to_client the message to send the client in html syntax and operation_success allways to True.Use  the info given by the toolDealWithRAGAgentic. 
     """,
     model=model,  # Adjust model as needed
+    model_settings = ModelSettings(temperature=0),
     tools=[DealWithRAGAgentic],
     output_type =OutputRAG
 )

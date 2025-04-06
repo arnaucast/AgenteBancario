@@ -1,7 +1,7 @@
 
 import unidecode
 import textdistance
-from agents import Agent, Runner, function_tool
+from agents import Agent, Runner, function_tool,ModelSettings
 from typing import List
 from pydantic import BaseModel, Field
 from agents import function_tool, RunContextWrapper
@@ -73,6 +73,7 @@ category_separator_agent = Agent(
     name="CategorySeparator",
     instructions=CATEGORY_SEPARATOR_PROMPT,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=CategorySeparatorLists
 )
 
@@ -243,6 +244,7 @@ category_filterer = Agent(
     name="CategoryFiltrator",
     instructions=CATEGORY_FILTRATOR,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=Categories_FilteredList
 )
 
@@ -469,12 +471,13 @@ DataFrame columns:
 Rules:
 - Use 'table' as the DataFrame name
 - Filter data only for the user's request (e.g., specific categories or timeframes)
-- Avoid computing or returning data beyond the question’s scope
+- Never return all the dataframe, be smart so you only get returned what you need
 - Last line must return a summary of key findings (e.g., totals, averages)
 - Keep analysis focused, efficient, and insight-driven
 - Don't mess up with the and and or conditions
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[execute_complex_query]
 )
 
@@ -502,7 +505,9 @@ analyze_user_data = Agent(
    - Concise explanations of key findings
 4. Include a brief summary or interpretation of the data
 5. First line is a 10 word summary of what you are analyzing, don't use ###
+6. Return everything in html format, so it can be shown on a website chat
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=str  # Assuming it returns a confirmation message or error
 )

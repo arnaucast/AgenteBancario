@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from agents import Agent
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -30,6 +30,7 @@ Check_Credit_Card_Data = Agent[BankingContext](
                     If you find that the credit card is blocked, tell the credit card cordinator to propose
                     the client to unblock it if he wants""",
     model =model,
+    model_settings = ModelSettings(temperature=0),
     tools=[get_card_details_function,check_payment_conditions_function]
 )
 
@@ -42,6 +43,7 @@ Update_Credit_Card_Data = Agent[BankingContext](
                     If any kind of error, return False to that variable
                 """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[block_card_function, unblock_card_function],
     output_type =UpdateCreditCard
 )
@@ -64,9 +66,10 @@ credit_card_coordinator = Agent[BankingContext](
     If you ask the client for confirmation, return operation_success=False
     If the tools tell you that it can't be solved, comunicate that to the client, setting operation_success to False
     If the client tells you that he is done with the petition, return "May I help you with something else" and return operation_success to True
-    Answer to the client in the language of its message
+    Answer in html syntax. 
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[
     Check_Credit_Card_Data.as_tool(
         tool_name="Check_Credit_Card_Data",

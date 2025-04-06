@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from agents import Agent
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -29,5 +29,6 @@ context_summarizer_agent = Agent(
     name="ContextSummarizer",
     instructions=CONTEXT_SUMMARIZER_PROMPT,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=ContextSummary
 )

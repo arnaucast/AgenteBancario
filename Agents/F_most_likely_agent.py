@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from agents import Agent
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -22,6 +22,7 @@ from .G_web_researcher import  news_coordinator
 from .D_analytics_agent import analyzer_of_data
 from .J_Agentic_RAG import rag_agent
 from .K_RAG_action_finder import transfer_RAG_info,credit_card_RAG_info,analyzer_data_rag
+from .L_account_balance import account_balance_agent
 
 class OutputModelSelector(BaseModel):
     agent_selected: str
@@ -44,6 +45,7 @@ agent_selector_agent = Agent(
 
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=OutputModelSelector
 )
 
@@ -80,7 +82,14 @@ agent_registry = {
         "agent_rag_info":analyzer_data_rag,
         "agent_rag_researcher":rag_agent
         
-    }
+    },
+        "Account Balance": {
+        "type": "agent",
+        "agent": account_balance_agent,  # Assuming this is an Agent object
+        "description": "Gets the balance or saldo of a client's account ",
+        "agent_rag_info":None,
+        "agent_rag_researcher":rag_agent
+        }
     # Add 18+ more agents here
 }
 

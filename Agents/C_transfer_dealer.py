@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from agents import Agent
+from agents import Agent,ModelSettings
 from agents import (
     Agent,
     GuardrailFunctionOutput,
@@ -29,6 +29,7 @@ Given a bank transfer request where the receiver’s IBAN is missing:
 3. If no match is found for the receiver, return: 'The receiver’s IBAN could not be identified. Please ask the user to provide the detailed IBAN of the receiver.'
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[find_closest_match],
     output_type=str  # Assuming it returns a string (IBAN or error message)
 )
@@ -49,6 +50,7 @@ If the order hasn't been able to be processed, return the message and also opera
 If not enough information, tell the agent to ask the client for the information
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[transfer_money_and_log],
     output_type=TransferOutput  # Assuming it returns a confirmation message or error
 )
@@ -63,13 +65,7 @@ class TransferOutput2(BaseModel):
 
 #3. If and only if the client provides the name or partial name of the receiver (e.g., "John Doe"), call `Find_IBAN_of_transfer_receiver` with the provided name. Example: {"IBAN_EMISOR": "ES9121000418450200051332", "receiver_name": "John Doe"}. If nothing is returned, ask: "I couldn’t find the receiver’s IBAN. Can you provide more details?"
 # Define the Transfer Coordinator agent with BankingContext
-''' find_target_of_transfer.as_tool(
-            tool_name="Find_IBAN_of_transfer_receiver",
-            tool_description="If you have the IBAN of the emisor and name or partial name of receptor, call this tool"
-        ),'''
-transfer_coordinator = Agent[BankingContext](
-    name="Transfer Coordinator",
-    instructions="""
+'''
 You assist banking clients with transfers, requiring the sender’s IBAN (IBAN_EMISOR), receiver’s IBAN (IBAN_RECEPTOR), and transfer amount (import). Follow these steps:
 . If multiple IBANs are returned, ask the client which one to use. If only one is returned, suggest it to the client for confirmation.
 - If IBAN_EMISOR, IBAN_RECEPTOR, and import are all available: Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation. After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
@@ -77,20 +73,34 @@ You assist banking clients with transfers, requiring the sender’s IBAN (IBAN_E
 - Do not call any tool unless all its required parameters are present.
 - If client tells that he doesn't want to do this task, return operation_success = True and tell "Operación cancelada to the client"
 Respond in the client's language
+'''
+''' find_target_of_transfer.as_tool(
+            tool_name="Find_IBAN_of_transfer_receiver",
+            tool_description="If you have the IBAN of the emisor and name or partial name of receptor, call this tool"
+        ),'''
+transfer_coordinator = Agent[BankingContext](
+    name="Transfer Coordinator",
+    instructions="""
+You assist banking clients with transfers. Follow these steps:
+- If all data needed is avilable, Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation. 
+After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
+- If `Send_Transfer_to_IBAN_receptor` returns operation_success = true, inform the client: "Transfer completed successfully!" and return operation_success = True.
+- If client tells that he doesn't want to do this task, return operation_success = True and tell "Operación cancelada to the client"
+ Give the response in html syntax
     """,
 
     model=model,
+    model_settings = ModelSettings(temperature=0),
     tools=[
        # get_ibans,  # Now expects a RunContextWrapper[BankingContext]
         #c,
-     
         send_transfer_to_iban_receptor.as_tool(
             tool_name="Send_Transfer_to_IBAN_receptor",
             tool_description="Executes a transfer using IBAN_EMISOR, IBAN_RECEPTOR, and import. Requires client confirmation and all three variables must be non empty."
         )
     ],
-    output_type =TransferOutput2
-    #input_guardrails=[iban_emisor_guardrail]  # Assuming this is defined elsewhere
+    output_type =TransferOutput2,
+    input_guardrails=[iban_emisor_guardrail_v2]  # Assuming this is defined elsewhere
 )
 
 '''

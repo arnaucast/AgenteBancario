@@ -6,7 +6,7 @@ import logfire
 from pydantic import BaseModel
 from agents import function_tool, RunContextWrapper
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -62,6 +62,7 @@ transfer_RAG_info = Agent(
 
     """,
     model=model,  # Adjust model as needed
+    model_settings = ModelSettings(temperature=0),
     output_type =OutputRAG
 )
 
@@ -81,11 +82,11 @@ credit_card_RAG_info = Agent(
     You: message_to_client=Quieres que bloquee la tarjeta por ti?
     """,
     model=model,  # Adjust model as need ed
+    model_settings = ModelSettings(temperature=0),
     output_type =OutputRAG
 )
 
 ######################################################### Analyzer of data #############################################################################
-
 
 
 analyzer_data_rag = Agent(
@@ -100,5 +101,6 @@ analyzer_data_rag = Agent(
     You: message_to_client=Quieres que analice los movimientos por ti?
     """,
     model=model,  # Adjust model as needed
+    model_settings = ModelSettings(temperature=0),
     output_type =OutputRAG
 )

@@ -117,12 +117,15 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
                     # Fallback if extraction fails
                     print(f"Error extracting guardrail message: {extract_error}")
                     error_msg = f"Banking Assistant: I'm experiencing technical difficulties: {str(e)}"
+                clean_conversation_history.append({"content": error_msg, "role": "assistant"})
+                return conversation_history, error_msg,False, False
             else:
                 # For other types of exceptions
                 error_msg = f"Banking Assistant: I'm experiencing technical difficulties: {str(e)}"
+                clean_conversation_history.append({"content": error_msg, "role": "assistant"})
             
-            clean_conversation_history.append({"content": error_msg, "role": "assistant"})
             return conversation_history, error_msg,True, False
+            
 
     return run_async_with_event_loop(async_process())
 

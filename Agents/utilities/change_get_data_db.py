@@ -103,6 +103,91 @@ def get_name_for_web(nif) -> List[str]:
         return [(row[0] + " " +  row[1]) for row in results]
     return []
 
+@function_tool
+def validate_iban_ft(iban: str) -> bool:
+    """
+    Validates an IBAN using the standard MOD-97 algorithm and country-specific format rules.
+    
+    Args:
+        iban: The IBAN to validate (can include spaces)
+    
+    Returns:
+        bool: True if IBAN is valid, False otherwise
+    """
+    # Remove spaces and convert to uppercase
+    iban = iban.replace(" ", "").upper()
+    
+    # Basic format check
+    if not all(c.isalnum() for c in iban):
+        return False
+    
+    # Check if IBAN has at least the minimum required length
+    if len(iban) < 15:  # Shortest valid IBAN (Norway)
+        return False
+    
+    # Extract country code
+    country_code = iban[:2]
+    
+    # Country-specific length validation
+    country_lengths = {
+        "AL": 28, "AD": 24, "AT": 20, "AZ": 28, "BH": 22, "BY": 28, "BE": 16, "BA": 20,
+        "BR": 29, "BG": 22, "BI": 27, "CR": 22, "HR": 21, "CY": 28, "CZ": 24, "DK": 18,
+        "DJ": 27, "DO": 28, "EG": 29, "SV": 28, "EE": 20, "FK": 18, "FO": 18, "FI": 18,
+        "FR": 27, "GE": 22, "DE": 22, "GI": 23, "GR": 27, "GL": 18, "GT": 28, "VA": 22,
+        "HN": 28, "HU": 28, "IS": 26, "IQ": 23, "IE": 22, "IL": 23, "IT": 27, "JO": 30,
+        "KZ": 20, "XK": 20, "KW": 30, "LV": 21, "LB": 28, "LY": 25, "LI": 21, "LT": 20,
+        "LU": 20, "MT": 31, "MR": 27, "MU": 30, "MD": 24, "MC": 27, "MN": 20, "ME": 22,
+        "NL": 18, "NI": 28, "MK": 19, "NO": 15, "PK": 24, "PS": 29, "PL": 28, "PT": 25,
+        "QA": 29, "RO": 24, "RU": 33, "LC": 32, "SM": 27, "ST": 25, "SA": 24, "RS": 22,
+        "SC": 31, "SK": 24, "SI": 19, "SO": 23, "ES": 24, "SD": 18, "OM": 23, "SE": 24,
+        "CH": 21, "TL": 23, "TN": 24, "TR": 26, "UA": 29, "AE": 23, "GB": 22, "VG": 24,
+        "YE": 30
+    }
+    
+    # Check if country code exists in our database
+    if country_code not in country_lengths:
+        return False
+    
+    # Check if IBAN length matches expected length for that country
+    if len(iban) != country_lengths[country_code]:
+        return False
+    
+    return True
+    
+    '''
+    # SEPA countries (for additional context if needed)
+    sepa_countries = {
+        "AD", "AT", "BE", "BG", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GI", "GR", "VA",
+        "HU", "IS", "IE", "IT", "LV", "LI", "LT", "LU", "MT", "NL", "NO", "PL", "PT", "RO",
+        "SK", "SI", "ES", "SE", "CH", "GB"
+    }
+    
+    # Move first 4 characters to the end
+    rearranged_iban = iban[4:] + iban[:4]
+    
+    # Convert letters to numbers (A=10, B=11, ..., Z=35)
+    numerical_iban = ""
+    for char in rearranged_iban:
+        if char.isalpha():
+            numerical_iban += str(ord(char) - ord('A') + 10)
+        else:
+            numerical_iban += char
+    
+    # Check if mod 97 equals 1 (international standard validation)
+    try:
+        return int(numerical_iban) % 97 == 1
+    except ValueError:
+        # In case numerical_iban is too large for int conversion
+        # Process in chunks
+        remainder = 0
+        chunk_size = 9  # Process 9 digits at a time
+        
+        for i in range(0, len(numerical_iban), chunk_size):
+            chunk = numerical_iban[i:i+chunk_size]
+            remainder = (remainder * (10 ** len(chunk)) + int(chunk)) % 97
+        
+        return remainder == 1
+    '''
 
 def validate_iban(iban: str) -> bool:
     """
@@ -208,7 +293,7 @@ guardrail_agent = Agent(
     Analyze user input to detect IBAN emsisor information and determine:
 
     1. Does the input contain an IBAN emsior?
-    2. Is the IBAN emisor valid? (Use the validate_iban function.)
+    2. Is the IBAN emisor valid? (Use the validate_iban_ft function.)
     3. Does the IBAN emisor belong to the sender? (Look for phrases like "my IBAN", "from my account", or "transfer from".)
 
     Rules:
@@ -219,7 +304,7 @@ guardrail_agent = Agent(
     - Set country to the IBAN’s country (from validate_iban).
     - Set IBAN_correct_format to true if validate_iban says it’s valid, false if not.
     """,
-    tools=[validate_iban],
+    tools=[validate_iban_ft],
     output_type=CheckIfIBANCorrect,
 )
 
@@ -235,6 +320,106 @@ def CheckIfIBANBelongs(IBAN,nif):
             return True
     except:
         return False
+    
+   
+class CheckTransferDetails(BaseModel):
+    IBAN_receptor_defined: bool = Field(
+        description="True if IBAN of the receptor of the transfer is defined"
+    )
+    IBAN_receptor_correct_format: bool = Field(
+        description="True if IBAN receptor has correct format"
+    )
+    Importe_transfer_defined: bool = Field(
+        description="True if importe of the transfer is defined"
+    )
+
+
+guardrail_agent_transf = Agent(
+    name="Check_Transfer_Details",
+    instructions="""
+    Analyze user input to detect IBAN receptor information is correct and determine:
+
+    1. Does the input contain an IBAN receptor of the transfer?
+    2. Is the IBAN receptorsor valid? (Use the validate_iban function.)
+
+    Rules:
+    - If no IBAN  receptor is found and no Importe_transfer_defined found
+    - Return: IBAN_receptor_defined = false,IBAN_receptor_correct_format=False Importe_transfer_defined = false
+    - Make sure you don't confound the IBAN given in Este cliente tiene los siguientes IBAN... These IBANs are of the client that wants to make the transfer
+    """,
+    tools=[validate_iban_ft],
+    output_type=CheckTransferDetails,
+) 
+@input_guardrail
+async def iban_emisor_guardrail_v2(
+    ctx: RunContextWrapper['BankingContext'], agent: Agent, input: str | list[TResponseInputItem]
+) -> GuardrailFunctionOutput:
+    """Guardrail to check if an IBAN is provided, valid, and belongs to the client."""
+    print("Processing input for IBAN validation")
+
+    # Handle different input types
+    if isinstance(input, str):
+        input_str = input
+    elif isinstance(input, list):
+        # Handle dictionary inputs (common in conversation history)
+        if all(isinstance(item, dict) for item in input):
+            # Extract content from dictionaries
+            input_str = " ".join([item.get('content', '') for item in input])
+        else:
+            # Fallback for other object types
+            input_str = " ".join([str(item) for item in input])
+    else:
+        input_str = str(input)
+    
+    # Run the IBAN validation guardrail agent
+    result = await Runner.run(guardrail_agent_transf, input_str, context=ctx.context)
+    iban_check_result = result.final_output_as(CheckTransferDetails)
+    
+    if  not iban_check_result.IBAN_receptor_defined and not iban_check_result.Importe_transfer_defined:
+        print("HOLA1")
+        return GuardrailFunctionOutput(
+            output_info={
+                "message": "You must define the IBAN receptor of the transfer and the import"
+            },
+            tripwire_triggered=True
+        )
+    if  not iban_check_result.IBAN_receptor_defined and  iban_check_result.Importe_transfer_defined:
+        print("HOLA1")
+        return GuardrailFunctionOutput(
+            output_info={
+                "message": "You must define the IBAN receptor of the transfer."
+            },
+            tripwire_triggered=True
+        )
+    # If no IBAN was detected or the IBAN is invalid
+    if  iban_check_result.IBAN_receptor_defined and not iban_check_result.IBAN_receptor_correct_format:
+        print("HOLA2")
+        return GuardrailFunctionOutput(
+            output_info={
+                "message": "Please provide a valid IBAN receptor to proceed with the transfer. "
+                           "For example ES0081122233445566778888"
+            },
+            tripwire_triggered=True
+        )
+    
+        # If no IBAN was detected or the IBAN is invalid
+    if  iban_check_result.IBAN_receptor_defined and  iban_check_result.IBAN_receptor_correct_format and not iban_check_result.Importe_transfer_defined:
+        print("HOLA2")
+        return GuardrailFunctionOutput(
+            output_info={
+                "message": "Please provide an import for the transfer "
+            },
+            tripwire_triggered=True
+        )
+
+    # IBAN is valid, belongs to the sender, and is registered to the client
+    return GuardrailFunctionOutput(
+        output_info={
+            "message": "IBAN verification successful."
+        },
+        tripwire_triggered=False
+    )
+
 @input_guardrail
 async def iban_emisor_guardrail(
     ctx: RunContextWrapper['BankingContext'], agent: Agent, input: str | list[TResponseInputItem]
@@ -336,6 +521,7 @@ def check_iban_ownership(wrapper: RunContextWrapper['BankingContext'],iban: str)
     return "Este IBAN no es del cliente"
 
 def get_saldos_by_IBAN(IBAN:str):
+    """Con esta herramienta consigues el saldo del cliente para un IBAN"""
     query = 'SELECT "Saldo" FROM "saldos" WHERE "IBAN" = %s'
     cursor.execute(query, (IBAN,))
     result = cursor.fetchone()
@@ -343,6 +529,14 @@ def get_saldos_by_IBAN(IBAN:str):
         return result[0]
     return None
 
+@function_tool
+def get_saldos_by_IBAN_ft(IBAN:str):
+    query = 'SELECT "Saldo" FROM "saldos" WHERE "IBAN" = %s'
+    cursor.execute(query, (IBAN,))
+    result = cursor.fetchone()
+    if result:
+        return result[0]
+    return None
 
 # Function to get the Titular de Gestión details by IBAN
 def get_titular_de_gestion(iban):

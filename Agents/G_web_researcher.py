@@ -6,7 +6,7 @@ import logfire
 from pydantic import BaseModel
 from agents import function_tool, RunContextWrapper
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -52,6 +52,7 @@ planner_agent = Agent(
     name="NewsPlannerAgent",
     instructions=PLANNER_PROMPT,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=SearchPlan,
 )
 
@@ -78,6 +79,7 @@ summary_agent = Agent(
     name="NewsSummaryAgent",
     instructions=SUMMARY_INSTRUCTIONS,
     model=model,
+    model_settings = ModelSettings(temperature=0)
 )
 
 """Functions for orchestrating planning, searching, and summarizing news about a topic."""
@@ -170,8 +172,10 @@ news_coordinator = Agent(
     instructions="""
 Given some news to search, use run_news_research and return the result to the user.
 Return the message_to_client and also operation_success =True always
+ Return it in html syntax
     """,
     model=model,  # Adjust model as needed
+    model_settings = ModelSettings(temperature=0),
     tools=[run_news_research],
     output_type =NoticiasOutput
 )

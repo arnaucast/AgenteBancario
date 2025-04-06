@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 from agents import Agent
 from agents import (
-    Agent,
+    Agent,ModelSettings,
     GuardrailFunctionOutput,
     InputGuardrailTripwireTriggered,
     RunContextWrapper,
@@ -119,5 +119,6 @@ category_detector  = Agent(
 
     """,
     model=model,
+    model_settings = ModelSettings(temperature=0),
     output_type=CategoryFound  # Assuming it returns a confirmation message or error
 )
