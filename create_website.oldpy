@@ -33,7 +33,6 @@ from Agents.utilities.web_utilities2 import process_task_with_threading,process_
 from Agents.utilities.change_get_data_db import BankingContext,get_all_distinct_cifs,get_ibans_for_web,get_saldos_by_IBAN,get_pan_by_cif,get_name_for_web
 from Agents.utilities.preferencias import check_and_update_language,ActualizaIdioma,get_language
 from __init__ import unique_contr_mov,unique_type_clie,unique_cifs_with_mov,get_tipo_cliente_iban
-from Agents.utilities.traductor_textos import get_translated_messages
 # Tracing and environment configuration (you might want to remove or modify these)
 import logfire
 
@@ -104,7 +103,6 @@ import uuid
 import streamlit as st
 from dotenv import load_dotenv
 
-# Custom imports
 # Custom imports
 def display_ibans(ibans):
     """
@@ -197,13 +195,103 @@ def initialize_session_state():
         st.session_state.waiting_for_rag_confirmation = False
     if "idioma" not in st.session_state:
         st.session_state.idioma = ""
-    if "traducciones" not in st.session_state:
-        st.session_state.traducciones = {}
+    if "audio_input" not in st.session_state:
+        st.session_state.audio_input = None
+
+import webrtcvad   
+def recognize_speech_whisper():
+    """Record audio with voice activity detection and transcribe it to Spanish text using Whisper."""
+    sample_rate = 16000
+    frame_duration_ms = 30  # Frame size in milliseconds (10, 20, or 30 ms supported by webrtcvad)
+    frame_size = int(sample_rate * frame_duration_ms / 1000)  # Samples per frame
+    silence_threshold = 1.5  # Seconds of silence before stopping
+    max_duration = 30  # Maximum recording duration in seconds
+
+    st.info("Escuchando... ¡Habla ahora!")
+    
+    # Initialize VAD
+    vad = webrtcvad.Vad(1)  # Aggressiveness level: 0 (least) to 3 (most)
+    audio_queue = Queue()
+    audio_data = []
+
+    def audio_callback(indata, frames, time, status):
+        """Callback function to process audio stream."""
+        audio_queue.put(indata.copy())
+
+    # Start recording in a non-blocking way
+    stream = sd.InputStream(samplerate=sample_rate, channels=1, dtype='int16', 
+                           blocksize=frame_size, callback=audio_callback)
+    stream.start()
+
+    silence_counter = 0
+    total_samples = 0
+    silence_samples = int(silence_threshold * sample_rate / frame_size)
+
+    try:
+        while total_samples < max_duration * sample_rate:
+            # Get audio frame from queue
+            frame = audio_queue.get()
+            audio_data.append(frame)
+            total_samples += frame_size
+
+            # Convert frame to bytes for VAD
+            frame_bytes = frame.tobytes()
+            is_speech = vad.is_speech(frame_bytes, sample_rate)
+
+            if is_speech:
+                silence_counter = 0  # Reset silence counter when speech is detected
+            else:
+                silence_counter += 1  # Increment silence counter
+
+            # Stop if silence exceeds threshold
+            if silence_counter > silence_samples:
+                break
+
+    finally:
+        stream.stop()
+        stream.close()
+
+    # Combine recorded audio
+    audio = np.concatenate(audio_data, axis=0)
+
+    # Save the audio to a temporary WAV file
+    temp_file = "temp_audio.wav"
+    wavio.write(temp_file, audio, sample_rate, sampwidth=2)
+    
+    # Load Whisper model with error handling
+    if not hasattr(st.session_state, 'whisper_model') or st.session_state.whisper_model is None:
+        try:
+            st.session_state.whisper_model = whisper.load_model("base")  # Use "medium" or "large" for better accuracy
+            #st.success("Modelo Whisper cargado con éxito.")
+        except Exception as e:
+            st.error(f"Error al cargar el modelo Whisper: {e}")
+            os.remove(temp_file)
+            return None
+    
+    # Transcribe with Spanish language setting
+    try:
+        result = st.session_state.whisper_model.transcribe(temp_file, language="es")
+        text = result["text"]
+        
+        os.remove(temp_file)  # Clean up temporary file
+        
+        if text:
+            #st.success("¡Audio procesado con éxito!")
+            return text
+        else:
+            st.warning("No se detectó voz o no se pudo transcribir.")
+            return None
+    except Exception as e:
+        st.error(f"Error al transcribir el audio: {e}")
+        os.remove(temp_file)
+        return None
+
 
 def main():
     st.set_page_config(page_title="Banking Assistant", page_icon="💼")
     initialize_session_state()
     
+
     # Custom CSS
     st.markdown("""
     <style>
@@ -321,19 +409,6 @@ def main():
             diccionario_idioma = check_and_update_language(st.session_state.banking_context.nif)
             if diccionario_idioma["exists"]:
                 st.session_state.idioma = diccionario_idioma["idioma"]
-                st.session_state.traducciones = get_translated_messages(diccionario_idioma["idioma"])
-                st.session_state.banking_context.traducciones = st.session_state.traducciones
-            # Mostrar el idioma del cliente
-            st.markdown("**Idioma:**")
-            idioma_display = st.session_state.idioma if st.session_state.idioma else "No registrado"
-            st.text_input(
-                label="Idioma del cliente",
-                value=idioma_display,
-                key="idioma_display",
-                label_visibility="collapsed",
-                disabled=True,
-                help="Idioma registrado para este cliente"
-            )
             
             nombre = get_name_for_web(st.session_state.banking_context.nif)
             main_ibans = [iban for iban in get_ibans_for_web(st.session_state.banking_context.nif) if iban in unique_contr_mov]
@@ -478,69 +553,62 @@ def main():
             st.divider()
 
     nombre = get_name_for_web(selected_main_cif.strip())
-    # Obtener las traducciones según el idioma seleccionado
-    #   # Esto puede venir de st.session_state.language o similar
-    traducciones = get_translated_messages(st.session_state.idioma)
-
-    # Construir el mensaje de bienvenida con las traducciones
-    welcome_html = f"""
-    <div class="chat-message assistant">
-        <div class="content">
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
-            <div class="message">
-                <h3 style="color: #0079AD; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
-                <p style="color: #000000; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0079AD;">
-                    <strong style="color: #0079AD; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
-                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
-                    </details>
-                </div>
-                <p style="color: #000000; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
+    st.markdown(f"""
+     <div class="chat-message assistant">
+    <div class="content">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
+        <div class="message">
+            <h3 style="color: #0079AD; margin-bottom: 10px;">¡Bienvenido/a {nombre[0]} a tu Asistente de Banco Sabadell!</h3>
+            <p style="color: #000000; margin-bottom: 15px;">Estoy aquí para ayudarte con tus necesidades bancarias de forma rápida y eficiente.</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0079AD;">
+                <strong style="color: #0079AD; display: block; margin-bottom: 10px;">¿Qué puedo hacer por ti?</strong>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ Realizar <strong style="color: #0079AD;">transferencias por ti</strong></summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Puedo ayudarte a realizar transferencias bancarias de manera rápida y segura.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ Darte información <strong style="color: #0079AD;">de tu saldo</strong></summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Consulta el saldo de tus cuentas en cualquier momento.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ Gestionar des/bloqueos e información de tus <strong style="color: #0079AD;">tarjetas</strong></summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Bloquea, desbloquea o consulta detalles de tus tarjetas.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ <strong style="color: #0079AD;">Analizar</strong> tus movimientos bancarios</summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Revisa y analiza tus transacciones recientes.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ Resolver cualquier tipo de <strong style="color: #0079AD;">dudas (tarjetas, transferencias, banca a distancia...)</strong></summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Aclaro tus preguntas sobre tarjetas, transferencias, banca a distancia y más.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ <strong style="color: #0079AD;">Darte noticias actualizadas</strong> de Banco Sabadell</summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Te mantengo al día con las últimas novedades del banco.</p>
+                </details>
+                <details style="margin-bottom: 10px;">
+                    <summary style="color: #000000; cursor: pointer;">✅ <strong style="color: #0079AD;">Definir preferencias</strong> (estilo de respuesta, idioma, tono, agilizar transferencias)</summary>
+                    <p style="color: #000000; margin: 10px 0 0 20px;">Personaliza el estilo de respuesta, idioma, tono o agiliza procesos.</p>
+                </details>
             </div>
+            <p style="color: #000000; margin-top: 15px;">¿En qué puedo ayudarte hoy?</p>
         </div>
     </div>
-    """
-
-    # Mostrar el mensaje en Streamlit
-    st.markdown(welcome_html, unsafe_allow_html=True)
-
-    if st.button(f"{st.session_state.banking_context.traducciones['NUEVA_CONV']}"):
+</div>
+        """, unsafe_allow_html=True)
+    
+    if st.button("Start New Conversation"):
         st.session_state.chat_history = []
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.task_solved = True
         st.session_state.current_agent = None
         st.session_state.current_task = None
         st.session_state.context_summary = ""
-        st.success(f"{st.session_state.banking_context.traducciones['NUEVA_CONV_EMP']}")
+        st.session_state.audio_input = None
+        st.success("New conversation started!")
         st.rerun()
 
-    st.caption(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
+    st.caption("Ask me about banking tasks and I'll assist you step-by-step!")
 
     for message in st.session_state.chat_history:
         if not message.get("hidden", False):
@@ -572,33 +640,44 @@ def main():
 
     if st.session_state.chat_history:
         last_message = st.session_state.chat_history[-1]
-        if last_message["role"] == "assistant" and (st.session_state.banking_context.traducciones["TAREA_REALIZADA_PROS"] in last_message["content"]
+        if last_message["role"] == "assistant" and ("Tarea realizada, quieres que prosiga con la siguiente?" in last_message["content"]
+                                                    or "Quieres que ejecute la siguiente consulta" in last_message["content"]
                                                     or st.session_state.waiting_for_rag_confirmation == True):
             last_user_message = next((msg for msg in reversed(st.session_state.chat_history) if msg["role"] == "user"), None)
             if not last_user_message or (last_user_message["content"].lower() not in ["yes", "no"]):
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button(f"{st.session_state.banking_context.traducciones['SI']}", key=f"yes_button_{st.session_state.thread_id}"):
+                    if st.button("Yes", key=f"yes_button_{st.session_state.thread_id}"):
                         st.session_state.Usuario_click = "SI"
                         st.rerun()
                 with col2:
-                    if st.button(f"{st.session_state.banking_context.traducciones['NO']}", key=f"no_button_{st.session_state.thread_id}"):
+                    if st.button("No", key=f"no_button_{st.session_state.thread_id}"):
                         st.session_state.Usuario_click = "NO"
                         st.rerun()
 
-    # User input handling
+    # User input handling with speech option
     if st.session_state.chat_enabled:
         if st.session_state.task_solved:
-            user_input = st.chat_input("Ask about banking tasks...")
-            if user_input:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                user_input = st.chat_input("Ask about banking tasks...")
+            with col2:
+                if st.button("🎤 Record Audio"):
+                    audio_text = recognize_speech_whisper()
+                    if audio_text:
+                        st.session_state.audio_input = audio_text
+                        user_input = audio_text
+
+            if user_input or st.session_state.audio_input:
+                if st.session_state.audio_input:
+                    user_input = st.session_state.audio_input
+                    st.session_state.audio_input = None
+                
                 if st.session_state.idioma == "":
                     summary_result = Runner.run_sync(get_language, user_input)
-                    st.session_state.idioma = summary_result.final_output_as(get_language).idioma
-                    ActualizaIdioma(st.session_state.banking_context.nif, st.session_state.idioma)
+                    st.session_state.context_summary = summary_result.final_output_as(get_language).idioma
+                    ActualizaIdioma(st.session_state.banking_context.nif, st.session_state.context_summary)
                     diccionario_idioma = check_and_update_language(st.session_state.banking_context.nif)
-                    st.session_state.traducciones = get_translated_messages(diccionario_idioma["idioma"])
-                    st.session_state.banking_context.traducciones = st.session_state.traducciones
-                    
 
                 timestamp = datetime.now().strftime("%I:%M %p")
                 st.session_state.chat_history.append({
@@ -625,9 +704,21 @@ def main():
             if st.session_state.Usuario_click != "":
                 feedback = st.session_state.Usuario_click
             else:
-                feedback = st.chat_input("Continue with the current task...")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    feedback = st.chat_input("Continue with the current task...")
+                with col2:
+                    if st.button("🎤 Record Audio"):
+                        audio_text = recognize_speech_whisper()
+                        if audio_text:
+                            st.session_state.audio_input = audio_text
+                            feedback = audio_text
 
-            if feedback or st.session_state.task_success:
+            if feedback or st.session_state.audio_input or st.session_state.task_success:
+                if st.session_state.audio_input:
+                    feedback = st.session_state.audio_input
+                    st.session_state.audio_input = None
+
                 if feedback:
                     timestamp = datetime.now().strftime("%I:%M %p")
                     st.session_state.chat_history.append({
@@ -677,12 +768,12 @@ def main():
                             st.session_state.next_task = next_task.order
                             st.session_state.chat_history.append({
                                 "role": "assistant",
-                                "content": f"{st.session_state.banking_context.traducciones['TAREA_REALIZADA_PROS']}  '{next_task.order}'? {st.session_state.banking_context.traducciones['SI_NO']}",
+                                "content": f"Tarea realizada, quieres que prosiga con la siguiente?: '{next_task.order}'? (Yes/No)",
                                 "timestamp": datetime.now().strftime("%I:%M %p")
                             })
                             st.session_state.chat_history_agent.append({
                                 "role": "assistant",
-                                "content": f"{st.session_state.banking_context.traducciones['TAREA_REALIZADA_PROS']} '{next_task.order}'? {st.session_state.banking_context.traducciones['SI_NO']}"
+                                "content": f"Tarea realizada, quieres que prosiga con la siguiente?: '{next_task.order}'? (Yes/No)"
                             })
                             st.session_state.task_solved = False
                     else:
@@ -692,16 +783,13 @@ def main():
                         })
                         st.session_state.chat_history.append({
                             "role": "assistant",
-                            "content": f"{st.session_state.banking_context.traducciones['ALGO_MAS']}",
+                            "content": "Quieres algo más?",
                             "timestamp": datetime.now().strftime("%I:%M %p")
                         })
                         st.session_state.chat_history_agent.append({
                             "role": "assistant",
-                            "content": f"{st.session_state.banking_context.traducciones['ALGO_MAS']}"
+                            "content": "Quieres algo más?"
                         })
-
-                        
-
                         st.session_state.task_solved = True
                         st.session_state.current_agent = None
                         st.session_state.current_task = None
@@ -723,14 +811,12 @@ def main():
                         context_adicional = AddContextToAgent(st.session_state.current_agent.name, st.session_state.banking_context.nif)
                         if hasattr(st.session_state.current_agent, 'instructions'):
                             st.session_state.current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
-                        st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma} "
-                        print("INSTRUCT")
-                        print(st.session_state.current_agent.instructions)
+                        st.session_state.current_agent.instructions += "\nAl usuario siempre le respondes en el idioma st.session_state.idioma "
                         if context_adicional != "":
                             st.session_state.current_agent.instructions += context_adicional
 
                         new_conversation_history_agent = [
-                            {"content": f"{st.session_state.banking_context.traducciones['TAREA_REALIZADA_PROS']} '{st.session_state.current_task}'?  {st.session_state.banking_context.traducciones['SI_NO']}", "role": "system"},
+                            {"content": f"Tarea realizada, quieres que prosiga con la siguiente?: '{st.session_state.current_task}'? (Yes/No)", "role": "system"},
                             {"content": feedback.lower(), "role": "user"}
                         ]
                         st.session_state.chat_history_agent = new_conversation_history_agent
@@ -758,13 +844,12 @@ def main():
                         st.session_state.Usuario_click = ""
                         st.session_state.chat_history.append({
                             "role": "assistant",
-                            "content": f"{st.session_state.banking_context.traducciones['NO_PROS_ALGO_MAS']}",
+                            "content": "Okay, I won't proceed with the remaining tasks. Do you want anything else?",
                             "timestamp": datetime.now().strftime("%I:%M %p")
                         })
-
                         st.session_state.chat_history_agent.append({
                             "role": "assistant",
-                            "content": f"{st.session_state.banking_context.traducciones['NO_PROS_ALGO_MAS']}"
+                            "content": "Okay, I won't proceed with the remaining tasks. Do you want anything else?"
                         })
                         st.session_state.task_solved = True
                         st.session_state.current_agent = None
@@ -824,20 +909,6 @@ def main():
                 if guardrail_output.non_banking_content_removed and filtered_input == "":
                     response = "Non-banking content removed. Processing only banking-related requests."
                     st.session_state.task_solved = True
-                    st.markdown(f"""
-                    <div class="chat-message assistant">
-                        <div class="content">
-                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
-                            <div class="message">
-                                f"{st.session_state.banking_context.traducciones['PROCESO_PREG_BANC']}"
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.session_state.chat_history.append({
-                        "role": "assistant",
-                        "content": f"{st.session_state.banking_context.traducciones['PROCESO_PREG_BANC']}"
-                    })
                 else:
                     separator_result = process_separator_with_threading(task_separator_agent, filtered_input)
                     separated_tasks = separator_result.final_output_as(task_separator_agent).items_found
@@ -858,9 +929,7 @@ def main():
                         context_adicional = AddContextToAgent(st.session_state.current_agent.name, st.session_state.banking_context.nif)
                         if hasattr(st.session_state.current_agent, 'instructions'):
                             st.session_state.current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
-                        st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma} "
-                        print("INSTRUCT")
-                        print(st.session_state.current_agent.instructions)
+                        st.session_state.current_agent.instructions += "\nAl usuario siempre le respondes en el idioma st.session_state.idioma "
                         if context_adicional != "":
                             st.session_state.current_agent.instructions += context_adicional
                         

@@ -13,8 +13,7 @@ import os
 from .utilities.change_get_data_db import *
 from agents import Agent, Runner, function_tool
 model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
-from context import BankingContext
-
+from __init__ import BankingContext
 class TargetTransfStr(BaseModel):
     IBAN_EMISOR: str
     NAME_RECEPTOR: str

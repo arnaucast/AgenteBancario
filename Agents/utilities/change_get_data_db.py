@@ -31,7 +31,7 @@ import re
 from typing import Optional
 
 from typing import List
-from context import BankingContext
+from __init__ import BankingContext
 
 '''
 @function_tool
@@ -379,7 +379,7 @@ async def iban_emisor_guardrail_v2(
         print("HOLA1")
         return GuardrailFunctionOutput(
             output_info={
-                "message": "You must define the IBAN receptor of the transfer and the import"
+                "message": f"{ctx.context.traducciones['IBAN_VALIDAR_MSG1']}"
             },
             tripwire_triggered=True
         )
@@ -387,7 +387,7 @@ async def iban_emisor_guardrail_v2(
         print("HOLA1")
         return GuardrailFunctionOutput(
             output_info={
-                "message": "You must define the IBAN receptor of the transfer."
+                "message": f"{ctx.context.traducciones['IBAN_VALIDAR_MSG2']}"
             },
             tripwire_triggered=True
         )
@@ -396,8 +396,7 @@ async def iban_emisor_guardrail_v2(
         print("HOLA2")
         return GuardrailFunctionOutput(
             output_info={
-                "message": "Please provide a valid IBAN receptor to proceed with the transfer. "
-                           "For example ES0081122233445566778888"
+                "message": f"{ctx.context.traducciones['IBAN_VALIDAR_MSG3']}"
             },
             tripwire_triggered=True
         )
@@ -407,7 +406,7 @@ async def iban_emisor_guardrail_v2(
         print("HOLA2")
         return GuardrailFunctionOutput(
             output_info={
-                "message": "Please provide an import for the transfer "
+                "message": f"{ctx.context.traducciones['IBAN_VALIDAR_MSG4']}"
             },
             tripwire_triggered=True
         )
@@ -415,7 +414,7 @@ async def iban_emisor_guardrail_v2(
     # IBAN is valid, belongs to the sender, and is registered to the client
     return GuardrailFunctionOutput(
         output_info={
-            "message": "IBAN verification successful."
+            "message": f"{ctx.context.traducciones['IBAN_VALIDAR_MSG5']}"
         },
         tripwire_triggered=False
     )

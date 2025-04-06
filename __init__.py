@@ -15,6 +15,7 @@ cursor = conn.cursor()
 class BankingContext:
     nif: str = None  # The NIF will be set via Streamlit
     data: Dict = field(default_factory=dict) 
+    traducciones: Dict = field(default_factory=dict) 
 
 def get_unique_variable_mov(variable) -> List[str]:
     """
