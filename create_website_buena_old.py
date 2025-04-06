@@ -71,6 +71,7 @@ from agents.voice import (
     VoicePipeline,
 )
 import time
+import whisper
 import numpy as np
 import numpy.typing as npt
 
@@ -101,15 +102,6 @@ from dotenv import load_dotenv
 
 # Custom imports
 # Custom imports
-
-import base64
-
-def get_base64_image(file_path):
-    """Convert an image file to a base64 string."""
-    with open(file_path, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-    return f"data:image/svg+xml;base64,{encoded_string}"
-
 def display_ibans(ibans):
     """
     Display IBANs without spaces.
@@ -203,18 +195,6 @@ def initialize_session_state():
         st.session_state.idioma = ""
     if "traducciones" not in st.session_state:
         st.session_state.traducciones = {}
-    if "cached_data" not in st.session_state:
-        st.session_state.cached_data = {}
-
-def get_cached_data(key, fetch_function, *args, **kwargs):
-    """Fetch data from DB and cache it in session state."""
-    if key not in st.session_state.cached_data:
-        st.session_state.cached_data[key] = fetch_function(*args, **kwargs)
-    return st.session_state.cached_data[key]
-
-# Usar get_cached_data para las imágenes
-user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
-assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
 
 def main():
     st.set_page_config(page_title="Banking Assistant", page_icon="💼")
@@ -291,7 +271,8 @@ def main():
     # Sidebar
     with st.sidebar:
         st.title("Banking Setup")
-        available_cifs = get_cached_data("available_cifs", get_all_distinct_cifs)
+        
+        available_cifs = get_all_distinct_cifs()
         
         st.subheader("Primary Banking CIF")
         cif_disabled = not st.session_state.task_solved or len(st.session_state.chat_history) > 0
@@ -310,7 +291,7 @@ def main():
                 )
             with col2:
                 if selected_main_cif.strip():
-                    nombre = get_cached_data(f"nombre_{selected_main_cif}", get_name_for_web, selected_main_cif.strip())
+                    nombre = get_name_for_web(selected_main_cif.strip())
                     st.markdown("**Nombre**")
                     st.text_input(
                         label="Name",
@@ -333,10 +314,10 @@ def main():
             st.session_state.chat_enabled = True
 
         if st.session_state.banking_context.nif:
-            diccionario_idioma = get_cached_data(f"idioma_{st.session_state.banking_context.nif}", check_and_update_language, st.session_state.banking_context.nif)
+            diccionario_idioma = check_and_update_language(st.session_state.banking_context.nif)
             if diccionario_idioma["exists"]:
                 st.session_state.idioma = diccionario_idioma["idioma"]
-                st.session_state.traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, diccionario_idioma["idioma"])
+                st.session_state.traducciones = get_translated_messages(diccionario_idioma["idioma"])
                 st.session_state.banking_context.traducciones = st.session_state.traducciones
             # Mostrar el idioma del cliente
             st.markdown("**Idioma:**")
@@ -350,12 +331,12 @@ def main():
                 help="Idioma registrado para este cliente"
             )
             
-            nombre = get_cached_data(f"nombre_{st.session_state.banking_context.nif}", get_name_for_web, st.session_state.banking_context.nif)
+            nombre = get_name_for_web(st.session_state.banking_context.nif)
             main_ibans = [iban for iban in get_ibans_for_web(st.session_state.banking_context.nif) if iban in unique_contr_mov]
             if main_ibans:
                 with st.container():
                     for iban in main_ibans:
-                        saldo = get_cached_data(f"saldo_{iban}", get_saldos_by_IBAN, iban)
+                        saldo = get_saldos_by_IBAN(iban)
                         saldo_display = f"{saldo:.2f} €" if saldo is not None else "0.00 €"
                         col1, col2 = st.columns([7, 3])
                         with col1:
@@ -379,10 +360,10 @@ def main():
             else:
                 st.warning("No IBANs found for Primary CIF.")
             
-            tipo_cli = get_cached_data(f"tipo_cli_{main_ibans[0]}", get_tipo_cliente_iban, IBAN=main_ibans[0])
+            tipo_cli = get_tipo_cliente_iban(IBAN=main_ibans[0])
             st.markdown(f"*Tipo de cliente:* {tipo_cli[0]}", unsafe_allow_html=True)
 
-            pans = get_cached_data(f"pans_{st.session_state.banking_context.nif}", get_pan_by_cif, st.session_state.banking_context.nif)
+            pans = get_pan_by_cif(st.session_state.banking_context.nif)
             if pans:
                 with st.container():
                     for pan, limite, gasto, bloqueada in pans:
@@ -446,7 +427,7 @@ def main():
                 )
             with col2:
                 if selected_test_cif and selected_test_cif != "None":
-                    nombre_test = get_cached_data(f"nombre_{selected_test_cif}", get_name_for_web, selected_test_cif)
+                    nombre_test = get_name_for_web(selected_test_cif)
                     st.markdown("**Nombre**")
                     st.text_input(
                         label="Name",
@@ -463,11 +444,11 @@ def main():
             )
         
         if selected_test_cif and selected_test_cif != "None":
-            test_ibans = get_cached_data(f"ibans_{selected_test_cif}", get_ibans_for_web, selected_test_cif)
+            test_ibans = get_ibans_for_web(selected_test_cif)
             if test_ibans:
                 with st.container():
                     for iban in test_ibans:
-                        saldo = get_cached_data(f"saldo_{iban}", get_saldos_by_IBAN, iban)
+                        saldo = get_saldos_by_IBAN(iban)
                         saldo_display = f"{saldo:.2f} €" if saldo is not None else "0.00 €"
                         col1, col2 = st.columns([7, 3])
                         with col1:
@@ -492,8 +473,10 @@ def main():
                 st.warning("No IBANs found for Test CIF.")
             st.divider()
 
-    nombre = get_cached_data(f"nombre_{selected_main_cif.strip()}", get_name_for_web, selected_main_cif.strip())
-    traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, st.session_state.idioma)
+    nombre = get_name_for_web(selected_main_cif.strip())
+    # Obtener las traducciones según el idioma seleccionado
+    #   # Esto puede venir de st.session_state.language o similar
+    traducciones = get_translated_messages(st.session_state.idioma)
 
     # Construir el mensaje de bienvenida con las traducciones
     welcome_html = f"""
@@ -554,18 +537,16 @@ def main():
         st.rerun()
 
     st.caption(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
-    user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
-    assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
-
+    avatar_user = "https://example.com/static/user-avatar.png"  # O una imagen local
+    avatar_assistant = "https://example.com/static/assistant-avatar.png"
     for message in st.session_state.chat_history:
         if not message.get("hidden", False):
-            avatar = user_avatar_base64 if message["role"] == "user" else assistant_avatar_base64
             with st.container():
                 if message["role"] == "user":
                     st.markdown(f"""
                     <div class="chat-message user">
                         <div class="content">
-                            <img src={avatar} class="avatar" />
+                            <img src={avatar_user} class="avatar" />
                             <div class="message">
                                 {message["content"]}
                                 <div class="timestamp">{get_timestamp(message)}</div>
@@ -577,7 +558,7 @@ def main():
                     st.markdown(f"""
                     <div class="chat-message assistant">
                         <div class="content">
-                            <img src={avatar} class="avatar" />
+                            <img src={avatar_assistant} class="avatar" />
                             <div class="message">
                                 {message["content"]}
                                 <div class="timestamp">{get_timestamp(message)}</div>
