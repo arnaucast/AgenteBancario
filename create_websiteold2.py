@@ -34,7 +34,6 @@ from Agents.utilities.change_get_data_db import BankingContext,get_all_distinct_
 from Agents.utilities.preferencias import check_and_update_language,ActualizaIdioma,get_language
 from __init__ import unique_contr_mov,unique_type_clie,unique_cifs_with_mov,get_tipo_cliente_iban
 from Agents.utilities.traductor_textos import get_translated_messages
-from Agents.utilities.css_style import get_css_styles
 # Tracing and environment configuration (you might want to remove or modify these)
 import logfire
 
@@ -104,11 +103,6 @@ from dotenv import load_dotenv
 # Custom imports
 
 import base64
-import base64
-import uuid
-from datetime import datetime
-import streamlit as st
-from dotenv import load_dotenv
 
 def get_base64_image(file_path):
     """Convert an image file to a base64 string."""
@@ -211,14 +205,13 @@ def initialize_session_state():
         st.session_state.traducciones = {}
     if "cached_data" not in st.session_state:
         st.session_state.cached_data = {}
-    if "colorblind_mode" not in st.session_state:
-        st.session_state.colorblind_mode = False  # Default to normal mode
 
 def get_cached_data(key, fetch_function, *args, **kwargs):
     """Fetch data from DB and cache it in session state."""
     if key not in st.session_state.cached_data:
         st.session_state.cached_data[key] = fetch_function(*args, **kwargs)
     return st.session_state.cached_data[key]
+
 
 def main():
     st.set_page_config(page_title="Banking Assistant", page_icon="💼")
@@ -227,8 +220,74 @@ def main():
     user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
     assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
 
-    print(st.session_state.colorblind_mode)
-    st.markdown(get_css_styles(st.session_state.colorblind_mode), unsafe_allow_html=True)
+    
+    # Custom CSS
+    st.markdown("""
+    <style>
+        .chat-message {
+            padding: 1rem; 
+            border-radius: 0.5rem; 
+            margin-bottom: 1rem; 
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-message.user {
+            background-color: #e6f7ff;
+            border-left: 5px solid #0079AD;
+        }
+        .chat-message.assistant {
+            background-color: #f0f0f0;
+            border-left: 5px solid #0079AD;
+        }
+        .chat-message .content {
+            display: flex;
+            margin-top: 0.5rem;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 1rem;
+        }
+        .message {
+            flex: 1;
+            color: #000000;
+        }
+        .timestamp {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.2rem;
+        }
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .markdown-content th {
+            background-color: #f5f5f5;
+        }
+        .stMarkdown p {
+            font-size: 14px;
+            margin-bottom: 0.2rem;
+            word-wrap: break-word;
+        }
+        .stTextInput > div > div > input {
+            font-size: 14px;
+        }
+        [data-testid="stSidebar"] {
+            width: 500px !important;
+        }
+        [data-testid="stAppViewContainer"] > .main {
+            margin-left: 500px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
@@ -280,11 +339,6 @@ def main():
                 st.session_state.idioma = diccionario_idioma["idioma"]
                 st.session_state.traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, diccionario_idioma["idioma"])
                 st.session_state.banking_context.traducciones = st.session_state.traducciones
-            else:
-                idioma_default = "Spanish"
-                print("Reemplazamostraudcciones")
-                st.session_state.banking_context.traducciones = st.session_state.traducciones
-                st.session_state.traducciones = get_cached_data(f"traducciones_{idioma_default}", get_translated_messages, idioma_default)
             # Mostrar el idioma del cliente
             st.markdown("**Idioma:**")
             idioma_display = st.session_state.idioma if st.session_state.idioma else "No registrado"
@@ -439,66 +493,49 @@ def main():
                 st.warning("No IBANs found for Test CIF.")
             st.divider()
 
-        # Add colorblind mode toggle
-        st.divider()
-        st.subheader("Accessibility")
-        colorblind_mode = st.checkbox(
-            "Enable Colorblind Mode",
-            value=st.session_state.colorblind_mode,
-            key="colorblind_toggle",
-            help="Adjusts colors for better visibility if you have color vision deficiency"
-        )
-        if colorblind_mode != st.session_state.colorblind_mode:
-            st.session_state.colorblind_mode = colorblind_mode
-            st.rerun()
-
     nombre = get_cached_data(f"nombre_{selected_main_cif.strip()}", get_name_for_web, selected_main_cif.strip())
     traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, st.session_state.idioma)
 
-    # Adjust welcome message colors based on colorblind mode
-    primary_color = "#2c3e50" if st.session_state.colorblind_mode else "#0079AD"
-    text_color = "#1a2525" if st.session_state.colorblind_mode else "#000000"
-    bg_color = "#ecf0f1" if st.session_state.colorblind_mode else "#f8f9fa"
-
+    # Construir el mensaje de bienvenida con las traducciones
     welcome_html = f"""
     <div class="chat-message assistant">
         <div class="content">
             <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
             <div class="message">
-                <h3 style="color: {primary_color}; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
-                <p style="color: {text_color}; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
-                <div style="background-color: {bg_color}; padding: 15px; border-radius: 8px; border-left: 4px solid {primary_color};">
-                    <strong style="color: {primary_color}; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
+                <h3 style="color: #0079AD; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
+                <p style="color: #000000; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0079AD;">
+                    <strong style="color: #0079AD; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
                     </details>
                     <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
+                        <summary style="color: #000000; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
+                        <p style="color: #000000; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
                     </details>
                 </div>
-                <p style="color: {text_color}; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
+                <p style="color: #000000; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
             </div>
         </div>
     </div>
@@ -517,8 +554,6 @@ def main():
         st.success(f"{st.session_state.banking_context.traducciones['NUEVA_CONV_EMP']}")
         st.rerun()
 
-    print("Traducc_imp")
-    print(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
     st.caption(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
     user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
     assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
@@ -571,7 +606,7 @@ def main():
     # User input handling
     if st.session_state.chat_enabled:
         if st.session_state.task_solved:
-            user_input = st.chat_input(f"{st.session_state.banking_context.traducciones['PREGUNTAME']}")
+            user_input = st.chat_input("Ask about banking tasks...")
             if user_input:
                 if st.session_state.idioma == "":
                     summary_result = Runner.run_sync(get_language, user_input)
@@ -580,7 +615,6 @@ def main():
                     diccionario_idioma = check_and_update_language(st.session_state.banking_context.nif)
                     st.session_state.traducciones = get_translated_messages(diccionario_idioma["idioma"])
                     st.session_state.banking_context.traducciones = st.session_state.traducciones
-                    print("Las traducciones son")
                     
 
                 timestamp = datetime.now().strftime("%I:%M %p")
@@ -592,7 +626,7 @@ def main():
                 st.markdown(f"""
                     <div class="chat-message user">
                         <div class="content">
-                            <img src={user_avatar_base64} class="avatar" />
+                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=Amaya" class="avatar" />
                             <div class="message">
                                 {user_input}
                                 <div class="timestamp">{get_timestamp(st.session_state.chat_history[-1])}</div>
@@ -608,7 +642,7 @@ def main():
             if st.session_state.Usuario_click != "":
                 feedback = st.session_state.Usuario_click
             else:
-                feedback = st.chat_input(f"{st.session_state.banking_context.traducciones['CONTINUA_CON_TAR']}")
+                feedback = st.chat_input("Continue with the current task...")
 
             if feedback or st.session_state.task_success:
                 if feedback:
@@ -621,7 +655,7 @@ def main():
                     st.markdown(f"""
                     <div class="chat-message user">
                         <div class="content">
-                            <img src={user_avatar_base64} class="avatar" />
+                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=Amaya" class="avatar" />
                             <div class="message">
                                 {feedback}
                                 <div class="timestamp">{get_timestamp(st.session_state.chat_history[-1])}</div>
@@ -682,6 +716,8 @@ def main():
                             "role": "assistant",
                             "content": f"{st.session_state.banking_context.traducciones['ALGO_MAS']}"
                         })
+
+                        
 
                         st.session_state.task_solved = True
                         st.session_state.current_agent = None
@@ -808,7 +844,7 @@ def main():
                     st.markdown(f"""
                     <div class="chat-message assistant">
                         <div class="content">
-                            <img src={assistant_avatar_base64} class="avatar" />
+                            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
                             <div class="message">
                                 f"{st.session_state.banking_context.traducciones['PROCESO_PREG_BANC']}"
                             </div>

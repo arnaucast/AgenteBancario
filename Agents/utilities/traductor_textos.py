@@ -1,4 +1,5 @@
 def get_translated_messages(language):
+
     messages = {
         "Spanish": {
             "IBAN_VALIDAR_MSG1": "Debes definir el receptor IBAN de la transferencia y el importe",
@@ -16,7 +17,6 @@ def get_translated_messages(language):
             "NUEVA_CONV_EMP": "Nueva conversación empezada!",
             "PREGUNTA_CUALQ": "Pregúntame sobre tareas de banca y te asistiré paso a paso",
             "PROCESO_PREG_BANC": "Solo proceso preguntas bancarias. Tienes otra duda?",
-            # Nuevas traducciones para el mensaje de bienvenida
             "WELCOME_MSG": "¡Bienvenido/a {name} a tu Asistente de Banco Sabadell!",
             "INTRO_TEXT": "Estoy aquí para ayudarte con tus necesidades bancarias de forma rápida y eficiente.",
             "WHAT_CAN_I_DO": "¿Qué puedo hacer por ti?",
@@ -34,7 +34,9 @@ def get_translated_messages(language):
             "NEWS_TEXT": "Te mantengo al día con las últimas novedades del banco.",
             "PREFERENCES_SUMMARY": "<strong style='color: #0079AD;'>Definir preferencias</strong> (estilo de respuesta, idioma, tono, agilizar transferencias)",
             "PREFERENCES_TEXT": "Personaliza el estilo de respuesta, idioma, tono o agiliza procesos.",
-            "HELP_TODAY": "¿En qué puedo ayudarte hoy?"
+            "HELP_TODAY": "¿En qué puedo ayudarte hoy?",
+            "PREGUNTAME": "Pregunta a cerca de tareas bancarias",
+            "CONTINUA_CON_TAR":"Continua con la tarea actual..."
         },
         "English": {
             "IBAN_VALIDAR_MSG1": "You must define the IBAN receptor of the transfer and the amount",
@@ -69,7 +71,9 @@ def get_translated_messages(language):
             "NEWS_TEXT": "I’ll keep you updated with the latest bank news.",
             "PREFERENCES_SUMMARY": "<strong style='color: #0079AD;'>Set preferences</strong> (response style, language, tone, streamline transfers)",
             "PREFERENCES_TEXT": "Customize the response style, language, tone, or streamline processes.",
-            "HELP_TODAY": "How can I assist you today?"
+            "HELP_TODAY": "How can I assist you today?",
+            "PREGUNTAME": "Ask about banking tasks",
+            "CONTINUA_CON_TAR":"Continue with the current task..."
         },
         "Catalan": {
             "IBAN_VALIDAR_MSG1": "Has de definir el receptor IBAN de la transferència i l'import",
@@ -104,7 +108,9 @@ def get_translated_messages(language):
             "NEWS_TEXT": "Et mantinc al dia amb les últimes novetats del banc.",
             "PREFERENCES_SUMMARY": "<strong style='color: #0079AD;'>Definir preferències</strong> (estil de resposta, idioma, to, agilitzar transferències)",
             "PREFERENCES_TEXT": "Personalitza l'estil de resposta, idioma, to o agilitza processos.",
-            "HELP_TODAY": "En què puc ajudar-te avui?"
+            "HELP_TODAY": "En què puc ajudar-te avui?",
+            "PREGUNTAME": "Pregunta'm sobre tasques bancàries",
+            "CONTINUA_CON_TAR":"Continua amb la tasca actual..."
         },
         "German": {
             "IBAN_VALIDAR_MSG1": "Sie müssen den IBAN-Empfänger der Überweisung und den Betrag angeben",
@@ -139,7 +145,9 @@ def get_translated_messages(language):
             "NEWS_TEXT": "Ich halte dich über die neuesten Nachrichten der Bank auf dem Laufenden.",
             "PREFERENCES_SUMMARY": "<strong style='color: #0079AD;'>Präferenzen festlegen</strong> (Antwortstil, Sprache, Ton, Überweisungen beschleunigen)",
             "PREFERENCES_TEXT": "Passe den Antwortstil, die Sprache, den Ton an oder beschleunige Prozesse.",
-            "HELP_TODAY": "Wie kann ich dir heute helfen?"
+            "HELP_TODAY": "Wie kann ich dir heute helfen?",
+            "PREGUNTAME": "Frag mich nach Bankaufgaben und ich werde dir Schritt für Schritt helfen!",
+            "CONTINUA_CON_TAR":"Fahre mit der aktuellen Aufgabe fort..."
         },
         "French": {
             "IBAN_VALIDAR_MSG1": "Vous devez définir le récepteur IBAN du virement et le montant",
@@ -174,8 +182,9 @@ def get_translated_messages(language):
             "NEWS_TEXT": "Je te tiens au courant des dernières nouvelles de la banque.",
             "PREFERENCES_SUMMARY": "<strong style='color: #0079AD;'>Définir des préférences</strong> (style de réponse, langue, ton, accélérer les virements)",
             "PREFERENCES_TEXT": "Personnalise le style de réponse, la langue, le ton ou accélère les processus.",
-            "HELP_TODAY": "Comment puis-je t’aider aujourd’hui ?"
+            "HELP_TODAY": "Comment puis-je t’aider aujourd’hui ?",
+            "PREGUNTAME":"Demande-moi des tâches bancaires et je t'aiderai étape par étape !",
+            "CONTINUA_CON_TAR":"Continue avec la tâche en cours..."
         }
     }
-    
     return messages.get(language, messages["Spanish"])  # Español por defecto si el idioma no es válido

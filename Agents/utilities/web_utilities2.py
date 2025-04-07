@@ -69,10 +69,9 @@ def process_task_with_threading(current_agent, current_task, chat_history, conte
     status_container = st.empty()
     progress_bar = st.progress(0)
     status_messages = [
-        "Getting data...",
-        "Appending data...",
-        "Processing task...",
-        "Finalizing..."
+        "Obteniendo datos..",
+        "Procesando tarea...",
+        "Finalizando..."
     ]
     
     # Update progress while the task runs
@@ -89,7 +88,7 @@ def process_task_with_threading(current_agent, current_task, chat_history, conte
     print(task_success)
 
     # Final UI update
-    status_container.text("Done!")
+    status_container.text("Hecho!")
     progress_bar.progress(1.0)
     
     return conversation_history, response,task_success
@@ -110,9 +109,9 @@ def process_separator_with_threading(task_separator_agent, filtered_input):
     status_container = st.empty()
     progress_bar = st.progress(0)
     status_messages = [
-        "Analyzing input...",
-        "Separating tasks...",
-        "Processing results..."
+        "Analizando mensaje...",
+        "Separando tareas...",
+        "Procesando resultados..."
     ]
     
     for i, status in enumerate(status_messages):
@@ -123,7 +122,7 @@ def process_separator_with_threading(task_separator_agent, filtered_input):
     separator_thread.join()
     separator_result = result_queue.get()
 
-    status_container.text("Done!")
+    status_container.text("Hecho!")
     progress_bar.progress(1.0)
     
     return separator_result
@@ -145,9 +144,9 @@ def process_guardrail_with_threading(banking_guardrail_agent, user_input):
     status_container = st.empty()
     progress_bar = st.progress(0)
     status_messages = [
-        "Checking input...",
-        "Applying guardrails...",
-        "Validating content..."
+        "Analizando mensaje...",
+        "Aplicando filtros...",
+        "Validando el contenido..."
     ]
     
     for i, status in enumerate(status_messages):
@@ -158,7 +157,7 @@ def process_guardrail_with_threading(banking_guardrail_agent, user_input):
     guardrail_thread.join()
     guardrail_result = result_queue.get()
 
-    status_container.text("Done!")
+    status_container.text("Hecho!")
     progress_bar.progress(1.0)
     
     return guardrail_result
@@ -190,10 +189,10 @@ def process_task_with_threading_concurrent(agent_get_info_rag, agent_rag_researc
     status_container = st.empty()
     progress_bar = st.progress(0)
     status_messages = [
-        "Initializing agents...",
-        "Processing with Agent 1...",
-        "Processing with Agent 2...",
-        "Combining results..."
+        "Inicializando agentes...",
+        "Procesando con Agent2 investigador...",
+        "Procesando con Agente buscador de acciones...",
+        "Combinando resultados..."
     ]
     
     # Update progress while tasks run
@@ -215,7 +214,7 @@ def process_task_with_threading_concurrent(agent_get_info_rag, agent_rag_researc
     print(f"Agent 2 success: {success2}")
 
     # Final UI update
-    status_container.text("Done!")
+    status_container.text("Hecho!")
     progress_bar.progress(1.0)
 
     if response_info_rag  != "": 
