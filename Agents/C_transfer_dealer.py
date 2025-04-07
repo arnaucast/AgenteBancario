@@ -85,7 +85,7 @@ You assist banking clients with transfers. Follow these steps:
 After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
 - If `Send_Transfer_to_IBAN_receptor` returns operation_success = true, inform the client: "Transfer completed successfully!" and return operation_success = True.
 - If client tells that he doesn't want to do this task, return operation_success = True and tell "Operación cancelada to the client"
- Give the response in html syntax
+ Give the response in html syntax, don't use **
     """,
 
     model=model,

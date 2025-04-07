@@ -302,7 +302,7 @@ def main():
             if main_ibans:
                 with st.container():
                     for iban in main_ibans:
-                        saldo = get_cached_data(f"saldo_{iban}", get_saldos_by_IBAN, iban)
+                        saldo =  get_saldos_by_IBAN(iban)
                         saldo_display = f"{saldo:.2f} €" if saldo is not None else "0.00 €"
                         col1, col2 = st.columns([7, 3])
                         with col1:
@@ -329,7 +329,7 @@ def main():
             tipo_cli = get_cached_data(f"tipo_cli_{main_ibans[0]}", get_tipo_cliente_iban, IBAN=main_ibans[0])
             st.markdown(f"*Tipo de cliente:* {tipo_cli[0]}", unsafe_allow_html=True)
 
-            pans = get_cached_data(f"pans_{st.session_state.banking_context.nif}", get_pan_by_cif, st.session_state.banking_context.nif)
+            pans = get_pan_by_cif(st.session_state.banking_context.nif)
             if pans:
                 with st.container():
                     for pan, limite, gasto, bloqueada in pans:
@@ -414,7 +414,7 @@ def main():
             if test_ibans:
                 with st.container():
                     for iban in test_ibans:
-                        saldo = get_cached_data(f"saldo_{iban}", get_saldos_by_IBAN, iban)
+                        saldo =  get_saldos_by_IBAN(iban)
                         saldo_display = f"{saldo:.2f} €" if saldo is not None else "0.00 €"
                         col1, col2 = st.columns([7, 3])
                         with col1:
