@@ -80,13 +80,9 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
 
         task_with_context = f"Task: {task}\nContext from previous tasks: {context_summary}" if context_summary else task
 
-        # DEBUG: Print out the full context being sent to the agent
-        print("\n--- DEBUG: Agent Processing ---")
-        print("Task:", task)
-
-        existing_tasks = [msg["content"] for msg in clean_conversation_history if msg["role"] == "user"]
-        if task_with_context not in existing_tasks:
-            clean_conversation_history.append({"content": task_with_context, "role": "user"})
+        #existing_tasks = [msg["content"] for msg in clean_conversation_history if msg["role"] == "user"]
+        #if task_with_context not in existing_tasks:
+        #    clean_conversation_history.append({"content": task_with_context, "role": "user"})
 
         print("new_context")
         print(clean_conversation_history)
@@ -94,13 +90,7 @@ def process_single_task(agent, task, conversation_history, context_summary="", b
         try:
             result = await Runner.run(agent, clean_conversation_history, context=banking_context)
             agent_response = result.final_output_as(agent)
-            print("Agent")
             clean_conversation_history.append({"content": agent_response.message_to_client, "role": "assistant"})
-            print("conv")
-            print(conversation_history)
-            print(agent_response.message_to_client)
-            print(agent_response.operation_success)
-            print(False)
             return conversation_history, agent_response.message_to_client,agent_response.operation_success, False
         
         except Exception as e:

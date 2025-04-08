@@ -48,12 +48,18 @@ def get_ibans2() -> List[str]:
 
 def get_all_distinct_cifs() -> List[str]:
     """Retrieve all distinct CIFs from the iban_titulares table."""
-    query = 'SELECT DISTINCT "CIF" FROM "iban_titulares" where "Titular" = %s ORDER BY "CIF"'
-    cursor.execute(query,("SI",))
-    results = cursor.fetchall()
-    if results:
-        return [row[0] for row in results]
-    return []
+    try:
+        query = 'SELECT DISTINCT "CIF" FROM "iban_titulares" ORDER BY "CIF"'
+        cursor.execute(query)
+        results = cursor.fetchall()
+        if results:
+            return [row[0] for row in results]
+        return []
+    except psycopg2.Error as e:
+        if conn:
+            conn.rollback()  # Roll back on error
+        print(f"Database error: {e}")
+        raise  # Re-raise for debugging; you might want to handle it differently in production
 
 @function_tool
 def get_ibans(wrapper: RunContextWrapper['BankingContext']) -> List[str]:
@@ -971,8 +977,9 @@ def check_payment_conditions_function(wrapper: RunContextWrapper['BankingContext
 
     # Step 4: Check all conditions
     # Condition 1: Saldo - import_amount >= 0
-    if saldo - import_amount < 0:
-        failed_conditions.append(f"Insufficient balance in IBAN {iban}. Current Saldo: {saldo}, Required: {import_amount}")
+    if saldo - import_amount < 0 and data["gasto_mes"] + import_amount > data["limite_tarjeta"]:
+        failed_conditions.append(f"""Insufficient balance in IBAN {iban}. Current Saldo: {saldo}, Required: {import_amount} and
+                                Monthly spending limit exceeded. Current gasto_mes: {data['gasto_mes']}, Import: {import_amount}, Limit: {data['limite_tarjeta']}""")
 
     # Condition 2: gasto_mes + import_amount <= limite_tarjeta
     if data["gasto_mes"] + import_amount > data["limite_tarjeta"]:

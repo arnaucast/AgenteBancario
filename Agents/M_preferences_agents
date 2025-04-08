@@ -1,0 +1,105 @@
+from pydantic import BaseModel
+from agents import Agent,ModelSettings
+from agents import (
+    Agent,
+    GuardrailFunctionOutput,
+    InputGuardrailTripwireTriggered,
+    RunContextWrapper,
+    Runner,
+    TResponseInputItem,
+    input_guardrail,
+)
+import os
+from .utilities.change_get_data_db import *
+from agents import Agent, Runner, function_tool
+model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
+from context import BankingContext
+from .utilities.preferencias import *
+
+class Idioma_Cliente(BaseModel):
+    idioma: str
+    """El idioma utilizado por el cliente"""
+
+############################################################# Language  ###########################################################33
+# Define the Send_Transfer_to_IBAN_receptor agent
+get_language = Agent(
+    name="get_language",
+    instructions="""
+    Given a user message, return the language the user is giving: The values you can return are Spanish, English, French, German, Catalan
+    """,
+    model=model,
+    model_settings = ModelSettings(temperature=0),
+    output_type=Idioma_Cliente  # Assuming it returns a confirmation message or error
+)
+
+############################################################# Language  ###########################################################33
+# Define the Send_Transfer_to_IBAN_receptor agent
+set_language = Agent(
+    name="define_language",
+    instructions="""
+    Given a user message, set the user language and return to the agent the confirmation that the language has been set
+    """,
+    model=model,
+    model_settings = ModelSettings(temperature=0),
+    output_type=Idioma_Cliente  # Assuming it returns a confirmation message or error
+)
+
+
+############################################################ Transfer preferences #################################################3
+
+class Preferencia_transf(BaseModel):
+    idioma: str
+    """La preferencia que quiere el usuario"""
+
+set_transfer_preference= Agent(
+    name="set_transf_pref",
+    instructions="""
+    You are a bank agent. Given a user query where it tells what preference he wants to set, you need to store it.
+    for example: Cuando digo transferencia a la abuela, quiero que sepas que es el IBAN ES883833939333
+    Tu deberás devolver: preferencia = "Cuando dice transferencia a la abuela se refiere a IBAN ES883833939333"
+    """,
+    model=model,
+    model_settings = ModelSettings(temperature=0),
+    tools=
+    output_type=Preferencia_transf  # Assuming it returns a confirmation message or error
+)
+
+##############################Coordinador transferencias #################################################################
+
+class Pref_coordinator(BaseModel):
+    message_to_client: str
+    """Information you need to tell the client"""
+    operation_success: bool
+    """Indicates with True if the transfer has been made with success"""
+
+
+coordinador_Preferencias = Agent[BankingContext](
+    name="Coordinador_Preferencias",
+    instructions="""
+    Eres un agente que se dedica a definir preferencias a usuarios.
+    Tienes dos herramientas:
+        define_language: que dado un lenguaje, lo asocia al cliente
+        set_transf_pref: que dada una preferencia de transferencias, por ejemplo,  cuando digo transferencia a la iaia, es el IBAN ES4747474.
+
+    Llámalas cuando el input del usuario contenga alguna de los requerimientos (lenguaje o preferencia transferencia)
+    Si ninguna tiene nada que ver, devuelve que message_to_client = "no se ha podido establecer la preferencia" 
+    Si lo has podido establecer,devuelve "Preferencia establecida".
+    siempre  operation_success = True
+    """,
+
+    model=model,
+    model_settings = ModelSettings(temperature=0),
+    tools=[
+       # get_ibans,  # Now expects a RunContextWrapper[BankingContext]
+        #c,
+        set_transfer_preference.as_tool(
+            tool_name="set_transf_pref",
+            tool_description="Sets transfer preferences"
+        ),
+        set_language.as_tool(
+            tool_name="define_language",
+            tool_description="Defines language for the user"
+        )
+    ],
+    output_type =Pref_coordinator
+)

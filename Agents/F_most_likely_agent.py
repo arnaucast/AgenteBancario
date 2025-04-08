@@ -46,18 +46,16 @@ agent_selector_agent = Agent(
     """,
     model=model,
     model_settings = ModelSettings(temperature=0),
-    output_type=OutputModelSelector
+    output_type= OutputModelSelector
 )
-
 
 # External tool registry (all are agents now)
 agent_registry = {
     "Credit_Card_Coordinator": {
         "type": "agent",
         "agent": credit_card_coordinator,  # Assuming this is an Agent object
-        "description": """Handles credit card requests and can block credit cards, unblock them, check why a client can't buy
-                         (monthly spending limit, current month spending)
-                       and find the reason on why a client can't buy things with a credit card""",
+        "description": """Handles credit card requests and can block credit cards, unblock them, check why a client can't buy things with a credit card
+                         (monthly spending limit, current month spending)""",
         "agent_rag_info":credit_card_RAG_info,
         "agent_rag_researcher":rag_agent
     },
@@ -105,8 +103,6 @@ def configure_agent_coordinator(user_request):
         result = Runner.run_sync(agent_selector_agent, conversation_history)
         selected_agent_output = result.final_output_as(OutputModelSelector)
         selected_agent_name = selected_agent_output.agent_selected
-        print("Selected agent output:")
-        print(selected_agent_name)
         user_information = selected_agent_output.user_wants_information
         
         # Check if the agent name is valid
@@ -120,8 +116,5 @@ def configure_agent_coordinator(user_request):
     else:
         # Max attempts reached
         return None, None
-    print("1")
-
-    print(agent_registry[selected_agent_name]["agent"])
     # Return the selected agent directly since everything is an agent now
     return agent_registry[selected_agent_name]["agent"],user_information,agent_registry[selected_agent_name]["agent_rag_info"],agent_registry[selected_agent_name]["agent_rag_researcher"]

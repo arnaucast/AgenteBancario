@@ -35,6 +35,7 @@ from Agents.utilities.preferencias import check_and_update_language,ActualizaIdi
 from __init__ import unique_contr_mov,unique_type_clie,unique_cifs_with_mov,get_tipo_cliente_iban
 from Agents.utilities.traductor_textos import get_translated_messages
 from Agents.utilities.css_style import get_css_styles
+#from Agents.M_preferences_agents import get_language
 # Tracing and environment configuration (you might want to remove or modify these)
 import logfire
 
@@ -227,7 +228,6 @@ def main():
     user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
     assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
 
-    print(st.session_state.colorblind_mode)
     st.markdown(get_css_styles(st.session_state.colorblind_mode), unsafe_allow_html=True)
 
     # Sidebar
@@ -282,7 +282,6 @@ def main():
                 st.session_state.banking_context.traducciones = st.session_state.traducciones
             else:
                 idioma_default = "Spanish"
-                print("Reemplazamostraudcciones")
                 st.session_state.banking_context.traducciones = st.session_state.traducciones
                 st.session_state.traducciones = get_cached_data(f"traducciones_{idioma_default}", get_translated_messages, idioma_default)
             # Mostrar el idioma del cliente
@@ -517,8 +516,6 @@ def main():
         st.success(f"{st.session_state.banking_context.traducciones['NUEVA_CONV_EMP']}")
         st.rerun()
 
-    print("Traducc_imp")
-    print(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
     st.caption(f"{st.session_state.banking_context.traducciones['PREGUNTA_CUALQ']}")
     user_avatar_base64 = get_cached_data("user_avatar_base64", get_base64_image, "Images/amaya_avatar.svg")
     assistant_avatar_base64 = get_cached_data("assistant_avatar_base64", get_base64_image, "Images/bot_avatar.svg")
@@ -580,7 +577,7 @@ def main():
                     diccionario_idioma = check_and_update_language(st.session_state.banking_context.nif)
                     st.session_state.traducciones = get_translated_messages(diccionario_idioma["idioma"])
                     st.session_state.banking_context.traducciones = st.session_state.traducciones
-                    print("Las traducciones son")
+
                     
 
                 timestamp = datetime.now().strftime("%I:%M %p")
@@ -633,7 +630,8 @@ def main():
                         "role": "user",
                         "content": feedback
                     })
-
+                print("task_success")
+                print(st.session_state.task_success)
                 if st.session_state.task_success:
                     st.session_state.task_success = False
                     clean_history = st.session_state.chat_history_agent
@@ -673,6 +671,7 @@ def main():
                             "role": "assistant",
                             "content": f"Task completed. Summary: {st.session_state.context_summary}"
                         })
+                        print("Se añade algo más")
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": f"{st.session_state.banking_context.traducciones['ALGO_MAS']}",
@@ -702,12 +701,9 @@ def main():
                         if st.session_state.current_agent is None:
                             st.session_state.current_agent = define_default_agent()
                         context_adicional = AddContextToAgent(st.session_state.current_agent.name, st.session_state.banking_context.nif)
-                        if hasattr(st.session_state.current_agent, 'instructions'):
-                            st.session_state.current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
-                        st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma} "
-                        print("INSTRUCT")
-                        print(st.session_state.current_agent.instructions)
-                        if context_adicional != "":
+                        if "Al usuario siempre le respondes en el idioma" not in st.session_state.current_agent.instructions:
+                            st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma}"
+                        if context_adicional != "" and context_adicional not in st.session_state.current_agent.instructions:
                             st.session_state.current_agent.instructions += context_adicional
 
                         new_conversation_history_agent = [
@@ -837,12 +833,9 @@ def main():
                         st.session_state.current_agent, st.session_state.is_question_rag, st.session_state.current_rag_info, st.session_state.current_rag_research = configure_agent_coordinator(st.session_state.current_task)
                         st.session_state.current_agent = st.session_state.current_agent if st.session_state.current_agent is not None else define_default_agent()
                         context_adicional = AddContextToAgent(st.session_state.current_agent.name, st.session_state.banking_context.nif)
-                        if hasattr(st.session_state.current_agent, 'instructions'):
-                            st.session_state.current_agent.instructions += "\nUse the conversation history or provided context summary to infer details unless specified otherwise."
-                        st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma} "
-                        print("INSTRUCT")
-                        print(st.session_state.current_agent.instructions)
-                        if context_adicional != "":
+                        if "Al usuario siempre le respondes en el idioma" not in st.session_state.current_agent.instructions:
+                            st.session_state.current_agent.instructions += f"\nAl usuario siempre le respondes en el idioma {st.session_state.idioma}"
+                        if context_adicional != "" and context_adicional not in st.session_state.current_agent.instructions:
                             st.session_state.current_agent.instructions += context_adicional
                         
                         new_conversation_history_chat = [

@@ -573,9 +573,7 @@ def main():
                             "role": "assistant",
                             "content": f"Task completed. Summary: {st.session_state.context_summary}"
                         })
-
                         
-
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": "Quieres algo más?",

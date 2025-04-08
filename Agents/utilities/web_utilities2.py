@@ -83,9 +83,6 @@ def process_task_with_threading(current_agent, current_task, chat_history, conte
     # Wait for the thread to finish and get the result
     task_thread.join()
     conversation_history, response,task_success= result_queue.get()
-    print("task state")
-
-    print(task_success)
 
     # Final UI update
     status_container.text("Hecho!")
