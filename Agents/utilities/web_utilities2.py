@@ -29,15 +29,17 @@ def AddContextToAgent(agent_name,selected_nif):
     elif agent_name =="Analytics":
         ibans = get_ibans_for_nif(selected_nif)
         if len(ibans) ==1:
-            return f"Este cliente emisor tiene el siguiente IBAN, la transferencia realízala con él: {ibans}"
+            return f"Este cliente emisor tiene el siguiente IBAN, haz el análisis con él: {ibans}"
         if len(ibans) >1:
-            return f"Este cliente emisor tiene los siguientes IBANs, pregúntale con cual quiere realizar la transferencia: {ibans}"
+            return f"Este cliente emisor tiene los siguientes IBANs, pregúntale al cliente cual utilizar para el análisis {ibans} y devuelve  operation_success  = false"
         else: 
             return ""
     elif agent_name =="Credit Card Cordinator":
         pans=  get_pans(selected_nif)
-        if len(pans) > 0:
+        if len(pans) ==1:
             return f"Este cliente tiene los siguientes PANs, resuelve con ellos su petición: {pans}"
+        elif len(pans) >1:
+            return f"Este cliente tiene el siguiente PANs, resuelve con el su petición: {pans}"
         else: 
             return ""
     else:
@@ -68,17 +70,31 @@ def process_task_with_threading(current_agent, current_task, chat_history, conte
     # Dynamic status updates with progress bar
     status_container = st.empty()
     progress_bar = st.progress(0)
-    status_messages = [
-        "Obteniendo datos..",
-        "Procesando tarea...",
-        "Finalizando..."
-    ]
-    
-    # Update progress while the task runs
-    for i, status in enumerate(status_messages):
-        status_container.text(status)
-        progress_bar.progress((i + 1) / len(status_messages))
-        time.sleep(1.25)  # Adjust this to approximate task duration / steps
+    if current_agent.name == "Analytics":
+        status_messages = [
+            "Buscando categorías..",
+            "Encontrando nombres categorías reales..",
+            "Filtrando nombres categorías reales...",
+            "Programando la consulta..."
+        ]
+        
+        # Update progress while the task runs
+        for i, status in enumerate(status_messages):
+            status_container.text(status)
+            progress_bar.progress((i + 1) / len(status_messages))
+            time.sleep(4)  # Adjust this to approximate task duration / steps
+    else:
+        status_messages = [
+            "Obteniendo datos..",
+            "Procesando tarea...",
+            "Finalizando..."
+        ]
+        
+        # Update progress while the task runs
+        for i, status in enumerate(status_messages):
+            status_container.text(status)
+            progress_bar.progress((i + 1) / len(status_messages))
+            time.sleep(1.25)  # Adjust this to approximate task duration / steps
     
     # Wait for the thread to finish and get the result
     task_thread.join()

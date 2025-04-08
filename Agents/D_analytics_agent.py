@@ -32,7 +32,6 @@ async def DealWithAnalyticsTask(ctx: RunContextWrapper['BankingContext'],text: s
         data = data[["fechahora","categoria","id_signo","importe"]].to_dict()
         categories_found = await find_categories(text)
         
-
         # Step 2: Perform the searches sequentially
         
         print(categories_found.items_found)
@@ -95,7 +94,6 @@ analyzer_of_data = Agent[BankingContext](
     handoff_description="Handles analytics",
     instructions="""1. Always use first DealWithAnalyticsTask to perform the analysis. 
     Send only the user's exact text to the tool and the IBAN emisor. Try using this tool a maximum of 3 times.
-    IF there are several IBANs, asks the user which one he wants to analyze
     When returned the analysis by the tool DealWithAnalyticsTask, return the analysis to the client, without changing or adding anything, only translating it to spanish, 
     along the operation_success  = true
     """,

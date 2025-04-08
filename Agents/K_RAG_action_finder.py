@@ -75,6 +75,7 @@ credit_card_RAG_info = Agent(
         - Blocking a credit card
         - Unblocking a credit card
         - If a client can't buy things because the buys are rejected, telling him the reason why that is happening
+        - Get details of the credit/debit cards of a client
     Tell the client what you can do to solve his petition.
     If the client asks for anything else that you can't do (it is not specified in your instructions), return an empty string for message_to_client
         For example:

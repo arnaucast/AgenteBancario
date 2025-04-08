@@ -49,8 +49,9 @@ TASK_SEPARATOR_PROMPT = (
     - 'transfer €200 to Maria'
     - 'show my last 5 transactions'
     - 'what are the news about Banc Sabadell?'
-    - 'tell me today's weather'
-    - 'what's happening in sports today'
+    - 'How has my salary evolved?
+
+    3. If it is an analytic task, return everything together as a task
     
     All of these should be included in your output, regardless of whether they are banking-related or not.
     The filtering will be handled by a different agent."""
@@ -71,3 +72,17 @@ task_separator_agent = Agent(
     model_settings = ModelSettings(temperature=0),
     output_type=TaskSeparatorLists
 )
+
+
+'''
+
+File "F:\Escritorio\Sabadell\CURSOS\LLM\Agents OpenAI\Agente_Bancario_Github\agente_bancario_git\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "F:\Escritorio\Sabadell\CURSOS\LLM\Agents OpenAI\Agente_Bancario_Github\agente_bancario_git\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 593, in code_to_exec
+    exec(code, module.__dict__)
+File "F:\Escritorio\Sabadell\CURSOS\LLM\Agents OpenAI\Agente_Bancario_Github\create_website.py", line 911, in <module>
+    main()
+File "F:\Escritorio\Sabadell\CURSOS\LLM\Agents OpenAI\Agente_Bancario_Github\create_website.py", line 467, in main
+    <h3 style="color: {primary_color}; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
+'''

@@ -454,6 +454,9 @@ def main():
     nombre = get_cached_data(f"nombre_{selected_main_cif.strip()}", get_name_for_web, selected_main_cif.strip())
     traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, st.session_state.idioma)
 
+    if 'WELCOME_MSG' not in traducciones:
+        traducciones = get_translated_messages("Spanish")
+
     # Adjust welcome message colors based on colorblind mode
     primary_color = "#2c3e50" if st.session_state.colorblind_mode else "#0079AD"
     text_color = "#1a2525" if st.session_state.colorblind_mode else "#000000"
@@ -817,7 +820,9 @@ def main():
                     })
                 else:
                     separator_result = process_separator_with_threading(task_separator_agent, filtered_input)
+                    
                     separated_tasks = separator_result.final_output_as(task_separator_agent).items_found
+                    print("separator result", separated_tasks)
                     st.session_state.separated_tasks = separated_tasks
                     
                     if not separated_tasks:
