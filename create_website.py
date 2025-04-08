@@ -454,57 +454,100 @@ def main():
     nombre = get_cached_data(f"nombre_{selected_main_cif.strip()}", get_name_for_web, selected_main_cif.strip())
     traducciones = get_cached_data(f"traducciones_{st.session_state.idioma}", get_translated_messages, st.session_state.idioma)
 
-    if 'WELCOME_MSG' not in traducciones:
-        traducciones = get_translated_messages("Spanish")
-
     # Adjust welcome message colors based on colorblind mode
     primary_color = "#2c3e50" if st.session_state.colorblind_mode else "#0079AD"
     text_color = "#1a2525" if st.session_state.colorblind_mode else "#000000"
     bg_color = "#ecf0f1" if st.session_state.colorblind_mode else "#f8f9fa"
-
-    welcome_html = f"""
-    <div class="chat-message assistant">
-        <div class="content">
-            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
-            <div class="message">
-                <h3 style="color: {primary_color}; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
-                <p style="color: {text_color}; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
-                <div style="background-color: {bg_color}; padding: 15px; border-radius: 8px; border-left: 4px solid {primary_color};">
-                    <strong style="color: {primary_color}; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
-                    </details>
-                    <details style="margin-bottom: 10px;">
-                        <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
-                        <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
-                    </details>
+    try:
+        welcome_html = f"""
+        <div class="chat-message assistant">
+            <div class="content">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
+                <div class="message">
+                    <h3 style="color: {primary_color}; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
+                    <p style="color: {text_color}; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
+                    <div style="background-color: {bg_color}; padding: 15px; border-radius: 8px; border-left: 4px solid {primary_color};">
+                        <strong style="color: {primary_color}; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
+                        </details>
+                    </div>
+                    <p style="color: {text_color}; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
                 </div>
-                <p style="color: {text_color}; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
             </div>
         </div>
-    </div>
-    """
+        """
+    except:
+        traducciones = get_translated_messages("Spanish")
+        welcome_html = f"""
+        <div class="chat-message assistant">
+            <div class="content">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=banking-agent" class="avatar" />
+                <div class="message">
+                    <h3 style="color: {primary_color}; margin-bottom: 10px;">{traducciones['WELCOME_MSG'].format(name=nombre[0])}</h3>
+                    <p style="color: {text_color}; margin-bottom: 15px;">{traducciones['INTRO_TEXT']}</p>
+                    <div style="background-color: {bg_color}; padding: 15px; border-radius: 8px; border-left: 4px solid {primary_color};">
+                        <strong style="color: {primary_color}; display: block; margin-bottom: 10px;">{traducciones['WHAT_CAN_I_DO']}</strong>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['TRANSFER_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['TRANSFER_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['BALANCE_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['BALANCE_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['CARDS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['CARDS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['MOVEMENTS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['MOVEMENTS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['DOUBTS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['DOUBTS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['NEWS_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['NEWS_TEXT']}</p>
+                        </details>
+                        <details style="margin-bottom: 10px;">
+                            <summary style="color: {text_color}; cursor: pointer;">✅ {traducciones['PREFERENCES_SUMMARY']}</summary>
+                            <p style="color: {text_color}; margin: 10px 0 0 20px;">{traducciones['PREFERENCES_TEXT']}</p>
+                        </details>
+                    </div>
+                    <p style="color: {text_color}; margin-top: 15px;">{traducciones['HELP_TODAY']}</p>
+                </div>
+            </div>
+        </div>
+        """
+
 
     # Mostrar el mensaje en Streamlit
     st.markdown(welcome_html, unsafe_allow_html=True)
