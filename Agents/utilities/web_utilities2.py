@@ -14,20 +14,32 @@ from manager import (
     task_separator_agent, 
     context_summarizer_agent
 )
+from __init__ import unique_contr_mov
 import asyncio
-from .change_get_data_db import get_ibans_for_nif,get_pans
+from .change_get_data_db import get_ibans_for_web,get_pans
 def AddContextToAgent(agent_name,selected_nif):
     
-    if agent_name in ("Transfer Coordinator","Account_Balance"):
-        ibans = get_ibans_for_nif(selected_nif)
+    if agent_name in ("Transfer Coordinator"):
+        ibans = get_ibans_for_web(selected_nif)
+        ibans = [iban for iban in ibans if iban in unique_contr_mov]
         if len(ibans) ==1:
             return f"Este cliente emisor tiene el siguiente IBAN, la transferencia realízala con él: {ibans}"
         if len(ibans) >1:
             return f"Este cliente  emisor tiene los siguientes IBANs, pregúntale con cual quiere realizar la transferencia: {ibans}"
         else: 
             return ""
+    if agent_name in ("Account_Balance"):
+        ibans = get_ibans_for_web(selected_nif)
+        ibans = [iban for iban in ibans if iban in unique_contr_mov]
+        if len(ibans) ==1:
+            return f"Este cliente emisor tiene el siguiente IBAN. Saca el Saldo para este IBAN {ibans}"
+        if len(ibans) >1:
+            return f"Este cliente  emisor tiene los siguientes IBANs: {ibans}"
+        else: 
+            return ""
     elif agent_name =="Analytics":
-        ibans = get_ibans_for_nif(selected_nif)
+        ibans = get_ibans_for_web(selected_nif)
+        ibans = [iban for iban in ibans if iban in unique_contr_mov]
         if len(ibans) ==1:
             return f"Este cliente emisor tiene el siguiente IBAN, haz el análisis con él: {ibans}"
         if len(ibans) >1:

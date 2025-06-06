@@ -102,9 +102,13 @@ def get_ibans_for_web(nif) -> List[str]:
 def get_name_for_web(nif) -> List[str]:
     """If a client doesn't specify the IBAN from which to send a transfer, call this tool to get it"""
     # Use NIF from context if available, otherwise fallback to imported cif_cliente
+    print("El nif es", nif)
     query = 'SELECT distinct "Nombre", "Apellidos" FROM "iban_titulares" WHERE "CIF" = %s'
+    
+
     cursor.execute(query, (nif, ))
     results = cursor.fetchall()
+    print("El resultado es ", results)
     if results:
         return [(row[0] + " " +  row[1]) for row in results]
     return []

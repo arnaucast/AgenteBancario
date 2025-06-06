@@ -81,7 +81,7 @@ transfer_coordinator = Agent[BankingContext](
     name="Transfer Coordinator",
     instructions="""
 You assist banking clients with transfers. Follow these steps:
-- If all data needed is avilable, Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation. 
+- If all data needed is avilable, Present the details (IBAN_EMISOR, IBAN_RECEPTOR, import) to the client for confirmation with an html format
 After confirmation, call `Send_Transfer_to_IBAN_receptor` with all three parameters.
 - If `Send_Transfer_to_IBAN_receptor` returns operation_success = true, inform the client: "Transfer completed successfully!" and return operation_success = True.
 - If client tells that he doesn't want to do this task, return operation_success = True and tell "Operación cancelada to the client"

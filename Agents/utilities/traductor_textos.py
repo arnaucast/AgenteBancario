@@ -16,7 +16,7 @@ def get_translated_messages(language):
             "NUEVA_CONV": "Comenzar nueva conversación",
             "NUEVA_CONV_EMP": "Nueva conversación empezada!",
             "PREGUNTA_CUALQ": "Pregúntame sobre tareas de banca y te asistiré paso a paso",
-            "PROCESO_PREG_BANC": "Solo proceso preguntas bancarias. Tienes otra duda?",
+            "PROCESO_PREG_BANC": "Solo proceso preguntas bancarias. ¿Tienes una duda o petición relacionada con Banco Sabadell?",
             "WELCOME_MSG": "¡Bienvenido/a {name} a tu Asistente de Banco Sabadell!",
             "INTRO_TEXT": "Estoy aquí para ayudarte con tus necesidades bancarias de forma rápida y eficiente.",
             "WHAT_CAN_I_DO": "¿Qué puedo hacer por ti?",

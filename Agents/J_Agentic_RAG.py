@@ -41,10 +41,11 @@ from agents import Agent, ItemHelpers, MessageOutputItem, Runner, trace
 @function_tool
 async def DealWithRAGAgentic(text: str) -> str:
 
-    categories_found = await FindType(text)
-    print(categories_found.category)
+    #primero determinamos si la pregunta es 
+    categories_found = await FindType(text) 
 
     best3 = get_top3_matches(text,categories_found.category)
+    print("print top 3")
     print(best3)
 
     return best3
@@ -67,18 +68,13 @@ rag_agent = Agent(
     name="rag_agent",
     handoff_description="Handles rag",
     instructions="""You are an agent that deals with bank clients question. You need to call  and return result to client
-    in message_to_client the message to send the client in html syntax and operation_success allways to True.Use  the info given by the toolDealWithRAGAgentic. 
+    in message_to_client the message to send the client in html syntax and operation_success allways to True.Use  the info given by the toolDealWithRAGAgentic.
+
+    If  the tool doesn't give you any information, return to the client "No he podido encontrar información relativa, quieres que trate de resolverlo yo" in the lenguage of the user
+
     """,
     model=model,  # Adjust model as needed
     model_settings = ModelSettings(temperature=0),
     tools=[DealWithRAGAgentic],
     output_type =OutputRAG
 )
-
-async def main():
-    topic = "Como bloqueo mi tarjeta"
-    summary = await Runner.run(rag_agent, topic)
-    print(summary)
-
-if __name__ == "__main__":
-    asyncio.run(main())

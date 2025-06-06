@@ -76,7 +76,7 @@ agent_registry = {
         "Analyzer of data": {
         "type": "agent",
         "agent": analyzer_of_data,  # Assuming this is an Agent object
-        "description": "Does analytics on bank movements. If you find the word analysis or analytics, it is the agent ",
+        "description": "Does analytics on bank movements, it has the movements categories of clients (salary, rent, etc... If you find the word analysis or analytics, it is the agent ",
         "agent_rag_info":analyzer_data_rag,
         "agent_rag_researcher":rag_agent
         

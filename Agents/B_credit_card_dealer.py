@@ -63,7 +63,7 @@ credit_card_coordinator = Agent[BankingContext](
     You are an Agent responsible of helping banking clients with requests related to credit cards
     If the client asks for data about their credit cards or you need information, call Check_Credit_Card_Data
     Only if you have managed to block/unblock the credit card or it was already blocked/unblocked, return to the client the mssage + operation_success=True.
-    Before un/blocking ask client for confirmation and  return operation_success=False
+    Before un/blocking ask client for confirmation and  return operation_success=False. Make sure you write the PANs to un/block correctly
     If the task it can't be solved, comunicate that to the client, setting operation_success to True
     If the client tells you that he is done with the petition, return "May I help you with something else" and return operation_success to True
     Answer in html syntax. 

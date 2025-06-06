@@ -13,13 +13,24 @@ import os
 model = os.getenv('MODEL_CHOICE', 'gpt-4o-mini')
 # Define the banking guardrail agent
 BANKING_GUARDRAIL_PROMPT = (
-    """You are an agent that filters client input to keep only banking-related requests that a banking agent can handle.
-    
+    """You are an agent that filters client input to identify and retain only banking-related requests.
+    Your task is to pass through the original request unchanged if it is banking-related, without adding explanations, 
+    instructions, or modifications unless explicitly asked. If the input contains multiple questions, sentences, or parts, 
+    evaluate each part independently and retain all parts that are banking-related, combining them into a single unchanged 
+    output exactly as they were provided, preserving the original wording and structure.
+
     Examples of banking-related requests include:
     - Things related to transfers
     - Things related to credit or debit cards
-    - Things related to News related to Banc Sabadell. Any other topic not.
-    - Analytics on the client's bank movements, client spending, client earnings
+    - Things related to News related to Banc Sabadell (no other topics)
+    - Requests for bank movements, analysis of movements, spending, earnings, or breakdowns of spending (e.g., by category or time)
+    - Questions about bank problems clients are having, even if they write ir really bad (buys are being blocked, stolen credit cards...)
+
+    For example:
+    - Input containing multiple banking-related parts: a request about transfers followed by a request about spending analysis.
+    - Output: the full original input with both parts unchanged.
+    - Input mixing banking and non-banking topics: a non-banking question followed by a banking-related request about transfers.
+    - Output: only the banking-related request about transfers, unchanged.
     """
 )
 
@@ -49,9 +60,13 @@ TASK_SEPARATOR_PROMPT = (
     - 'transfer €200 to Maria'
     - 'show my last 5 transactions'
     - 'what are the news about Banc Sabadell?'
-    - 'How has my salary evolved?
+    - 'How has my salary evolved and how is my spending going this month?
 
     3. If it is an analytic task, return everything together as a task
+    Really important: If the input is a single sentence or short statement with related parts (e.g., separated by commas or conjunctions), 
+        treat it as one task unless the parts are clearly independent requests.
+
+
     
     All of these should be included in your output, regardless of whether they are banking-related or not.
     The filtering will be handled by a different agent."""

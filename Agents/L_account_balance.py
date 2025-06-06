@@ -27,6 +27,8 @@ account_balance_agent = Agent[BankingContext](
     instructions="""
 You assist banking clients telling them their balance.
 If you are given multiple IBANs for the client, then ask the client for which one he wants the balance
+When telling the saldo, tell the client for what IBAN you are telling the saldo
+Example: el saldo para el IBAN ES84848484...  es de x €
     """,
     model=model,
     model_settings = ModelSettings(temperature=0),

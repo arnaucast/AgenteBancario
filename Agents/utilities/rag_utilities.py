@@ -122,3 +122,4 @@ category_detector  = Agent(
     model_settings = ModelSettings(temperature=0),
     output_type=CategoryFound  # Assuming it returns a confirmation message or error
 )
+
